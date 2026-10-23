@@ -174,6 +174,53 @@
   }
   .surprise:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(26, 11, 46, .18); }
 
+  .tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    padding: 4px;
+    margin-bottom: 12px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    box-shadow: var(--shadow);
+  }
+  .tab {
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    border-radius: 999px;
+    padding: 11px 8px;
+    font: 700 15px/1.2 Inter, system-ui, sans-serif;
+    cursor: pointer;
+  }
+  .tab[aria-selected="true"] { background: var(--sunset); color: #1a0b2e; }
+  .label { display: block; margin: 14px 2px 6px; font-size: 13px; font-weight: 700; color: var(--muted); }
+  .select {
+    width: 100%;
+    appearance: none;
+    -webkit-appearance: none;
+    border: 1.5px solid var(--chip-line);
+    background: var(--bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23ff3d8b' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 14px center;
+    color: var(--text);
+    border-radius: 14px;
+    padding: 12px 40px 12px 14px;
+    font: inherit;
+    font-size: 16px;
+  }
+  .day-chips { flex-wrap: wrap; overflow: visible; }
+  .day-chips .chip { padding: 8px 12px; }
+  .area-head {
+    list-style: none;
+    margin: 10px 4px -4px;
+    font: 800 15px/1.2 Unbounded, Inter, system-ui, sans-serif;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .area-head span { font: 600 13px/1 Inter, system-ui, sans-serif; color: var(--muted); }
+  [hidden] { display: none !important; }
+
   .note { margin: 14px 4px 0; font-size: 14px; color: var(--muted); min-height: 20px; }
 
   /* ---- Bar cards ---- */
@@ -273,7 +320,12 @@
 </header>
 
 <div class="wrap">
-  <div class="panel">
+  <div class="tabs" role="tablist" aria-label="View">
+    <button class="tab" role="tab" data-tab="now" aria-selected="true">🔥 Right now</button>
+    <button class="tab" role="tab" data-tab="plan" aria-selected="false">🗓️ Plan ahead</button>
+  </div>
+
+  <div class="panel" id="now-panel">
     <div class="chips" role="group" aria-label="Where">
       <button class="chip" data-place="near" aria-pressed="false">📍 Near me</button>
       <button class="chip" data-place="Sydney" aria-pressed="false">Sydney</button>
@@ -286,6 +338,26 @@
     </div>
     <input class="search" id="search" type="search" placeholder="Search a bar, suburb or drink" aria-label="Search a bar, suburb or drink" autocomplete="off">
     <button class="surprise" id="surprise">🎲 Pick a bar for me</button>
+  </div>
+
+  <div class="panel" id="plan-panel" hidden>
+    <div class="chips" role="group" aria-label="City">
+      <button class="chip" data-plan-city="Sydney" aria-pressed="false">Sydney</button>
+      <button class="chip" data-plan-city="Melbourne" aria-pressed="false">Melbourne</button>
+    </div>
+    <label class="label" for="area">Area</label>
+    <select class="select" id="area"></select>
+    <span class="label">Day</span>
+    <div class="chips day-chips" role="group" aria-label="Day">
+      <button class="chip" data-day="any" aria-pressed="false">Any day</button>
+      <button class="chip" data-day="1" aria-pressed="false">Mon</button>
+      <button class="chip" data-day="2" aria-pressed="false">Tue</button>
+      <button class="chip" data-day="3" aria-pressed="false">Wed</button>
+      <button class="chip" data-day="4" aria-pressed="false">Thu</button>
+      <button class="chip" data-day="5" aria-pressed="false">Fri</button>
+      <button class="chip" data-day="6" aria-pressed="false">Sat</button>
+      <button class="chip" data-day="0" aria-pressed="false">Sun</button>
+    </div>
   </div>
 
   <p class="note" id="note" aria-live="polite"></p>
@@ -312,11 +384,10 @@
     return Object.assign({}, v, { slots: parseHours(v.hours || []) });
   });
 
-  var state = { place: "near", when: "now", me: null, query: "" };
+  var state = { tab: "now", place: "near", when: "now", me: null, query: "", planCity: "Sydney", area: "all", day: "any" };
   try {
     var saved = JSON.parse(localStorage.getItem(STORE) || "{}");
-    if (saved.place) state.place = saved.place;
-    if (saved.when) state.when = saved.when;
+    ["tab", "place", "when", "planCity", "area", "day"].forEach(function (k) { if (saved[k]) state[k] = saved[k]; });
   } catch (e) {}
 
   // ----- Reading the hours -----
@@ -474,7 +545,11 @@
   var shown = [];
 
   function save() {
-    try { localStorage.setItem(STORE, JSON.stringify({ place: state.place, when: state.when })); } catch (e) {}
+    try {
+      localStorage.setItem(STORE, JSON.stringify({
+        tab: state.tab, place: state.place, when: state.when, planCity: state.planCity, area: state.area, day: state.day,
+      }));
+    } catch (e) {}
   }
 
   function city() {
@@ -506,6 +581,99 @@
   }
 
   function render() {
+    document.querySelectorAll("[data-tab]").forEach(function (b) {
+      b.setAttribute("aria-selected", String(b.dataset.tab === state.tab));
+    });
+    document.getElementById("now-panel").hidden = state.tab !== "now";
+    document.getElementById("plan-panel").hidden = state.tab !== "plan";
+    if (state.tab === "plan") renderPlan(); else renderNow();
+  }
+
+  // ----- Plan ahead: every venue, grouped by area -----
+
+  var DAY_NAMES = ["Sundays", "Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays"];
+
+  function areaOptions(cityVenues) {
+    var counts = {};
+    cityVenues.forEach(function (v) { counts[v.area] = (counts[v.area] || 0) + 1; });
+    var select = document.getElementById("area");
+    var areas = Object.keys(counts).sort(function (a, b) { return a.localeCompare(b); });
+    if (state.area !== "all" && !counts[state.area]) state.area = "all";
+    select.textContent = "";
+    var all = el("option", null, "All areas (" + cityVenues.length + ")");
+    all.value = "all";
+    select.appendChild(all);
+    areas.forEach(function (a) {
+      var o = el("option", null, a + " (" + counts[a] + ")");
+      o.value = a;
+      select.appendChild(o);
+    });
+    select.value = state.area;
+  }
+
+  // The happy hour times on one day, e.g. "4 pm to 6 pm".
+  function dayTimes(v, day) {
+    return v.slots
+      .filter(function (s) { return s.day === day; })
+      .sort(function (a, b) { return a.from - b.from; })
+      .map(function (s) { return clock(s.from) + " to " + clock(s.to); })
+      .join(" & ");
+  }
+
+  function renderPlan() {
+    document.querySelectorAll("[data-plan-city]").forEach(function (b) {
+      b.setAttribute("aria-pressed", String(b.dataset.planCity === state.planCity));
+    });
+    document.querySelectorAll("[data-day]").forEach(function (b) {
+      b.setAttribute("aria-pressed", String(b.dataset.day === String(state.day)));
+    });
+
+    var cityVenues = venues.filter(function (v) { return v.city === state.planCity; });
+    areaOptions(cityVenues);
+    var day = state.day === "any" ? null : Number(state.day);
+    var rows = cityVenues.filter(function (v) {
+      if (state.area !== "all" && v.area !== state.area) return false;
+      if (day != null && !v.slots.some(function (s) { return s.day === day; })) return false;
+      return true;
+    });
+
+    var where = state.area === "all" ? state.planCity : state.area;
+    var when = day == null ? "" : " on " + DAY_NAMES[day];
+    setNote(rows.length + " happy hour" + (rows.length === 1 ? "" : "s") + " in " + where + when + ".");
+
+    listEl.textContent = "";
+    shown = [];
+    if (!rows.length) {
+      var empty = el("li", "empty");
+      empty.appendChild(el("div", "big", "😴"));
+      empty.appendChild(el("h2", "display", "Nothing listed"));
+      empty.appendChild(el("p", null, "No happy hours in " + where + when + " yet."));
+      var any = el("button", "chip", "Try any day");
+      any.addEventListener("click", function () { state.day = "any"; save(); render(); });
+      if (day != null) empty.appendChild(any);
+      listEl.appendChild(empty);
+      return;
+    }
+
+    var groups = {};
+    rows.forEach(function (v) { (groups[v.area] = groups[v.area] || []).push(v); });
+    Object.keys(groups).sort(function (a, b) { return a.localeCompare(b); }).forEach(function (area) {
+      var head = el("li", "area-head", area);
+      head.appendChild(el("span", null, groups[area].length + (groups[area].length === 1 ? " spot" : " spots")));
+      listEl.appendChild(head);
+      groups[area]
+        .sort(function (a, b) { return a.name.localeCompare(b.name); })
+        .forEach(function (v) {
+          var badge = day == null ? status(v) : { kind: "soon", label: DAYS[day] + " " + dayTimes(v, day) };
+          listEl.appendChild(card(v, badge, null));
+        });
+    });
+  }
+
+  // ----- Right now -----
+
+  function renderNow() {
+    placeNote();
     document.querySelectorAll("[data-place]").forEach(function (b) {
       b.setAttribute("aria-pressed", String(b.dataset.place === state.place));
     });
@@ -571,43 +739,47 @@
     }
 
     rows.forEach(function (r) {
-      var v = r.v;
-      var li = el("li", "card");
-      var top = el("div", "top");
-      var head = el("div");
-      head.appendChild(el("h2", "name display", v.name));
-      head.appendChild(el("p", "where", "📍 " + v.area + (r.d != null ? " · " + distanceText(r.d) : "")));
-      top.appendChild(head);
-      top.appendChild(el("span", "badge " + r.s.kind, r.s.label));
-      li.appendChild(top);
-      li.appendChild(el("p", "deal", v.deal));
-      if (v.members) li.appendChild(el("span", "members", "🎟️ Members only"));
-      li.appendChild(el("p", "hours", "🕓 " + hoursText(v)));
-
-      var actions = el("div", "actions");
-      var dir = el("a", "go", "Take me there →");
-      dir.href = mapsLink(v);
-      dir.target = "_blank";
-      dir.rel = "noopener";
-      actions.appendChild(dir);
-      if (v.source) {
-        var src = el("a", "src", "Source");
-        src.href = v.source;
-        src.target = "_blank";
-        src.rel = "noopener";
-        actions.appendChild(src);
-      }
-      if (v.checked) actions.appendChild(el("span", "checked", checkedText(v.checked)));
-      li.appendChild(actions);
-      listEl.appendChild(li);
+      listEl.appendChild(card(r.v, r.s, r.d));
     });
   }
 
+  function card(v, badge, distance) {
+    var li = el("li", "card");
+    var top = el("div", "top");
+    var head = el("div");
+    head.appendChild(el("h2", "name display", v.name));
+    head.appendChild(el("p", "where", "📍 " + v.area + (distance != null ? " · " + distanceText(distance) : "")));
+    top.appendChild(head);
+    top.appendChild(el("span", "badge " + badge.kind, badge.label));
+    li.appendChild(top);
+    li.appendChild(el("p", "deal", v.deal));
+    if (v.members) li.appendChild(el("span", "members", "🎟️ Members only"));
+    li.appendChild(el("p", "hours", "🕓 " + hoursText(v)));
+
+    var actions = el("div", "actions");
+    var dir = el("a", "go", "Take me there →");
+    dir.href = mapsLink(v);
+    dir.target = "_blank";
+    dir.rel = "noopener";
+    actions.appendChild(dir);
+    if (v.source) {
+      var src = el("a", "src", "Source");
+      src.href = v.source;
+      src.target = "_blank";
+      src.rel = "noopener";
+      actions.appendChild(src);
+    }
+    if (v.checked) actions.appendChild(el("span", "checked", checkedText(v.checked)));
+    li.appendChild(actions);
+    return li;
+  }
+
+  var locating = false, noteText = "";
   function setNote(text) { noteEl.textContent = text || ""; }
 
   function placeNote() {
     if (state.place !== "near") { setNote("Showing " + state.place + "."); return; }
-    if (!state.me) return;
+    if (!state.me) { setNote(locating ? "Finding where you are…" : noteText); return; }
     var near = nearestCity(state.me);
     if (near.d > FAR_AWAY_KM) {
       setNote("You're not near Sydney or Melbourne yet, so here's " + near.city + ", the closest city.");
@@ -618,22 +790,25 @@
 
   function locate() {
     if (!navigator.geolocation) {
-      setNote("This browser can't share your location. Pick a city instead.");
+      noteText = "This browser can't share your location. Pick a city instead.";
+      render();
       return;
     }
-    setNote("Finding where you are…");
+    locating = true;
+    if (state.tab === "now") setNote("Finding where you are…");
     navigator.geolocation.getCurrentPosition(function (pos) {
+      locating = false;
       state.me = { lat: pos.coords.latitude, lon: pos.coords.longitude };
-      placeNote();
       render();
     }, function (err) {
+      locating = false;
       var iphone = /iPhone|iPad|iPod/.test(navigator.userAgent);
       if (err && err.code === 1) {
-        setNote(iphone
+        noteText = (iphone
           ? "Your phone is blocking location for this app. Open Settings > Privacy & Security > Location Services, make sure it's on, then tap Safari Websites and choose While Using the App. Then tap Near me again."
           : "Your phone is blocking location for this app. Tap the icon to the left of the web address, choose Permissions (or Site settings) > Location > Allow, and check Location is on in your phone's settings. Then tap Near me again.");
       } else {
-        setNote("We couldn't find where you are just now. Check Location is on in your phone's settings, then tap Near me again.");
+        noteText = "We couldn't find where you are just now. Check Location is on in your phone's settings, then tap Near me again.";
       }
       render();
     }, { enableHighAccuracy: false, timeout: 20000, maximumAge: 300000 });
@@ -661,7 +836,7 @@
     b.addEventListener("click", function () {
       state.place = b.dataset.place;
       save();
-      if (state.place === "near") locate(); else placeNote();
+      if (state.place === "near") locate();
       render();
     });
   });
@@ -673,12 +848,40 @@
     });
   });
   document.getElementById("surprise").addEventListener("click", surprise);
+  document.querySelectorAll("[data-tab]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      state.tab = b.dataset.tab;
+      save();
+      render();
+      window.scrollTo({ top: 0 });
+    });
+  });
+  document.querySelectorAll("[data-plan-city]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      state.planCity = b.dataset.planCity;
+      state.area = "all";
+      save();
+      render();
+    });
+  });
+  document.querySelectorAll("[data-day]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      state.day = b.dataset.day;
+      save();
+      render();
+    });
+  });
+  document.getElementById("area").addEventListener("change", function (e) {
+    state.area = e.target.value;
+    save();
+    render();
+  });
   document.getElementById("search").addEventListener("input", function (e) {
     state.query = e.target.value.trim();
     render();
   });
 
-  if (state.place === "near") locate(); else placeNote();
+  if (state.place === "near") locate();
   render();
   // Keep "On now" and "Starts in" up to date while the page is open.
   setInterval(function () {
