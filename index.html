@@ -1,0 +1,479 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Happy Hour Finder</title>
+<meta name="description" content="Find bars with a happy hour on near you in Sydney and Melbourne.">
+<meta name="theme-color" content="#1f1a17">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #faf6f1;
+    --card: #ffffff;
+    --text: #1f1a17;
+    --muted: #6f655d;
+    --line: #ebe2d8;
+    --brand: #e8860c;
+    --brand-ink: #ffffff;
+    --chip: #f1e9df;
+    --on: #1d8a4e;
+    --on-bg: #e3f4ea;
+    --soon: #a35f00;
+    --soon-bg: #fdf0db;
+    --off: #6f655d;
+    --off-bg: #f1ece6;
+    --shadow: 0 1px 2px rgba(31, 26, 23, .06), 0 4px 14px rgba(31, 26, 23, .05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #161210;
+      --card: #211b18;
+      --text: #f5ede5;
+      --muted: #a89c91;
+      --line: #342b26;
+      --brand: #f59a2a;
+      --brand-ink: #1f1a17;
+      --chip: #2c2420;
+      --on: #5fd394;
+      --on-bg: #17332a;
+      --soon: #f3b75e;
+      --soon-bg: #3a2b14;
+      --off: #a89c91;
+      --off-bg: #2a2320;
+      --shadow: none;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.45 Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  .wrap { max-width: 640px; margin: 0 auto; padding: 0 16px 48px; }
+  header { padding: 28px 0 8px; }
+  h1 { margin: 0; font-size: 30px; line-height: 1.1; letter-spacing: -.02em; }
+  h1 span { color: var(--brand); }
+  .sub { margin: 6px 0 0; color: var(--muted); }
+
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+  .chip {
+    border: 1px solid var(--line);
+    background: var(--chip);
+    color: var(--text);
+    border-radius: 999px;
+    padding: 8px 14px;
+    font: inherit;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .chip[aria-pressed="true"] { background: var(--brand); border-color: var(--brand); color: var(--brand-ink); }
+  .chip svg { width: 16px; height: 16px; }
+  .chips + .chips { margin-top: 10px; }
+
+  .note { margin: 14px 0 0; font-size: 14px; color: var(--muted); min-height: 20px; }
+
+  .list { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 12px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: var(--shadow);
+  }
+  .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+  .name { margin: 0; font-size: 18px; font-weight: 700; line-height: 1.25; }
+  .where { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
+  .badge {
+    flex: none;
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .badge.on { color: var(--on); background: var(--on-bg); }
+  .badge.soon { color: var(--soon); background: var(--soon-bg); }
+  .badge.off { color: var(--off); background: var(--off-bg); }
+  .deal { margin: 12px 0 0; font-size: 16px; font-weight: 500; }
+  .hours { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
+  .actions { display: flex; gap: 16px; align-items: center; margin-top: 12px; flex-wrap: wrap; font-size: 14px; }
+  .actions a { color: var(--brand); font-weight: 600; text-decoration: none; }
+  .actions a:hover { text-decoration: underline; }
+  .checked { color: var(--muted); font-size: 13px; margin-left: auto; }
+
+  .empty { text-align: center; padding: 32px 16px; color: var(--muted); }
+  .empty button { margin-top: 12px; }
+
+  footer { margin-top: 32px; font-size: 14px; color: var(--muted); }
+  footer a { color: var(--brand); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Happy hour <span>finder</span></h1>
+    <p class="sub">Bars with cheap drinks near you, in Sydney and Melbourne.</p>
+  </header>
+
+  <div class="chips" role="group" aria-label="Where">
+    <button class="chip" data-place="near" aria-pressed="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+      Near me
+    </button>
+    <button class="chip" data-place="Sydney" aria-pressed="false">Sydney</button>
+    <button class="chip" data-place="Melbourne" aria-pressed="false">Melbourne</button>
+  </div>
+  <div class="chips" role="group" aria-label="When">
+    <button class="chip" data-when="now" aria-pressed="false">On now</button>
+    <button class="chip" data-when="today" aria-pressed="false">Today</button>
+    <button class="chip" data-when="all" aria-pressed="false">All week</button>
+  </div>
+
+  <p class="note" id="note" aria-live="polite"></p>
+  <ul class="list" id="list"></ul>
+
+  <footer>
+    Deals change often, so check with the bar before you go.
+    Know a happy hour we're missing, or spot a mistake?
+    <a href="https://github.com/sanj2888/Happy-Hour/issues/new?title=Happy%20hour%20suggestion" target="_blank" rel="noopener">Tell us</a>.
+  </footer>
+</div>
+
+<script src="venues.js"></script>
+<script>
+(function () {
+  var CITIES = {
+    Sydney: { tz: "Australia/Sydney", state: "NSW", lat: -33.8688, lon: 151.2093 },
+    Melbourne: { tz: "Australia/Melbourne", state: "VIC", lat: -37.8136, lon: 144.9631 },
+  };
+  var DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  var FAR_AWAY_KM = 100;
+  var STORE = "happy-hour-settings";
+
+  var venues = (window.VENUES || []).map(function (v) {
+    return Object.assign({}, v, { slots: parseHours(v.hours || []) });
+  });
+
+  var state = { place: "Sydney", when: "now", me: null };
+  try {
+    var saved = JSON.parse(localStorage.getItem(STORE) || "{}");
+    if (saved.place) state.place = saved.place;
+    if (saved.when) state.when = saved.when;
+  } catch (e) {}
+
+  // ----- Reading the hours -----
+
+  // Turns [{days: "Mon, Thu-Sun", from: "16:00", to: "18:00"}] into
+  // [{day: 1, from: 960, to: 1080}, ...] (minutes after midnight).
+  function parseHours(hours) {
+    var slots = [];
+    hours.forEach(function (h) {
+      var from = toMinutes(h.from), to = toMinutes(h.to);
+      if (from == null || to == null) return;
+      dayList(h.days).forEach(function (d) { slots.push({ day: d, from: from, to: to }); });
+    });
+    return slots;
+  }
+
+  function toMinutes(t) {
+    var m = /^(\d{1,2}):(\d{2})$/.exec(String(t || "").trim());
+    return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+  }
+
+  function dayIndex(name) {
+    var i = DAYS.indexOf(String(name).trim().slice(0, 3).replace(/^./, function (c) { return c.toUpperCase(); }));
+    return i < 0 ? null : i;
+  }
+
+  function dayList(text) {
+    text = String(text || "").trim();
+    if (/^(daily|every ?day)$/i.test(text)) return [0, 1, 2, 3, 4, 5, 6];
+    var out = [];
+    text.split(",").forEach(function (part) {
+      var ends = part.split("-");
+      var a = dayIndex(ends[0]);
+      var b = ends.length > 1 ? dayIndex(ends[1]) : a;
+      if (a == null || b == null) return;
+      for (var d = a; ; d = (d + 1) % 7) {
+        if (out.indexOf(d) < 0) out.push(d);
+        if (d === b) break;
+      }
+    });
+    return out;
+  }
+
+  // ----- Time in the venue's city -----
+
+  function cityNow(city) {
+    var parts = new Intl.DateTimeFormat("en-AU", {
+      timeZone: CITIES[city].tz, weekday: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+    }).formatToParts(new Date());
+    var get = function (type) { return (parts.find(function (p) { return p.type === type; }) || {}).value; };
+    return { day: dayIndex(get("weekday")), mins: Number(get("hour")) * 60 + Number(get("minute")) };
+  }
+
+  function clock(mins) {
+    mins = ((mins % 1440) + 1440) % 1440;
+    var h = Math.floor(mins / 60), m = mins % 60;
+    var suffix = h < 12 ? "am" : "pm";
+    var h12 = h % 12 === 0 ? 12 : h % 12;
+    return h12 + (m ? ":" + String(m).padStart(2, "0") : "") + " " + suffix;
+  }
+
+  function wait(mins) {
+    if (mins < 60) return mins + " min";
+    var h = Math.floor(mins / 60), m = mins % 60;
+    return h + " hr" + (m ? " " + m + " min" : "");
+  }
+
+  // Works out whether a venue's happy hour is on now, later today or another day.
+  function status(v) {
+    var now = cityNow(v.city);
+    var yesterday = (now.day + 6) % 7;
+    var best = null;
+    for (var i = 0; i < v.slots.length; i++) {
+      var s = v.slots[i];
+      var overnight = s.to <= s.from;
+      if (s.day === now.day && now.mins >= s.from && (overnight || now.mins < s.to)) {
+        return { kind: "on", rank: 0, label: "On now, ends " + clock(s.to), today: true };
+      }
+      if (overnight && s.day === yesterday && now.mins < s.to) {
+        return { kind: "on", rank: 0, label: "On now, ends " + clock(s.to), today: true };
+      }
+    }
+    // Next start within the coming week.
+    for (var ahead = 0; ahead < 8; ahead++) {
+      var day = (now.day + ahead) % 7;
+      v.slots.forEach(function (s) {
+        if (s.day !== day) return;
+        var minsAway = ahead * 1440 + s.from - now.mins;
+        if (minsAway <= 0) return;
+        if (!best || minsAway < best.minsAway) best = { minsAway: minsAway, slot: s, ahead: ahead };
+      });
+      if (best) break;
+    }
+    var endedToday = v.slots.filter(function (s) { return s.day === now.day && s.to > s.from && now.mins >= s.to; });
+    if (best && best.ahead === 0) {
+      var soon = best.minsAway <= 120;
+      return {
+        kind: "soon", rank: 1, today: true,
+        label: soon ? "Starts in " + wait(best.minsAway) : "Starts " + clock(best.slot.from),
+        minsAway: best.minsAway,
+      };
+    }
+    if (endedToday.length) {
+      return { kind: "off", rank: 2, today: true, label: "Finished at " + clock(endedToday[0].to), minsAway: best ? best.minsAway : 1e9 };
+    }
+    if (best) {
+      var when = best.ahead === 1 ? "tomorrow" : DAYS[best.slot.day];
+      return { kind: "off", rank: 3, today: false, label: "Next " + when + " " + clock(best.slot.from), minsAway: best.minsAway };
+    }
+    return { kind: "off", rank: 4, today: false, label: "No times listed", minsAway: 1e9 };
+  }
+
+  // Groups the hours for display, e.g. "Mon-Fri 4 pm to 7 pm".
+  function hoursText(v) {
+    return (v.hours || []).map(function (h) {
+      var days = /^(daily|every ?day)$/i.test(String(h.days).trim()) ? "Every day" : h.days.replace(/-/g, "–");
+      return days + ", " + clock(toMinutes(h.from)) + " to " + clock(toMinutes(h.to));
+    }).join(" · ");
+  }
+
+  // ----- Distance -----
+
+  function km(a, b) {
+    var rad = Math.PI / 180;
+    var dLat = (b.lat - a.lat) * rad, dLon = (b.lon - a.lon) * rad;
+    var x = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLon / 2) ** 2;
+    return 6371 * 2 * Math.asin(Math.sqrt(x));
+  }
+
+  function distanceText(d) {
+    if (d < 1) return Math.max(50, Math.round(d * 20) * 50) + " m away";
+    if (d < 10) return d.toFixed(1) + " km away";
+    return Math.round(d) + " km away";
+  }
+
+  function nearestCity(me) {
+    var best = null;
+    Object.keys(CITIES).forEach(function (c) {
+      var d = km(me, CITIES[c]);
+      if (!best || d < best.d) best = { city: c, d: d };
+    });
+    return best;
+  }
+
+  // ----- Screen -----
+
+  var listEl = document.getElementById("list");
+  var noteEl = document.getElementById("note");
+
+  function save() {
+    try { localStorage.setItem(STORE, JSON.stringify({ place: state.place, when: state.when })); } catch (e) {}
+  }
+
+  function city() {
+    if (state.place !== "near") return state.place;
+    return state.me ? nearestCity(state.me).city : "Sydney";
+  }
+
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+
+  function mapsLink(v) {
+    var q = v.name + ", " + v.area + " " + CITIES[v.city].state;
+    return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(q);
+  }
+
+  function checkedText(iso) {
+    var d = new Date(iso + "T00:00:00");
+    if (isNaN(d)) return "";
+    return "Checked " + d.toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" });
+  }
+
+  function render() {
+    document.querySelectorAll("[data-place]").forEach(function (b) {
+      b.setAttribute("aria-pressed", String(b.dataset.place === state.place));
+    });
+    document.querySelectorAll("[data-when]").forEach(function (b) {
+      b.setAttribute("aria-pressed", String(b.dataset.when === state.when));
+    });
+
+    var c = city();
+    var useDistance = state.place === "near" && state.me && nearestCity(state.me).d <= FAR_AWAY_KM;
+    var rows = venues
+      .filter(function (v) { return v.city === c; })
+      .map(function (v) {
+        return { v: v, s: status(v), d: useDistance ? km(state.me, v) : null };
+      })
+      .filter(function (r) {
+        if (state.when === "now") return r.s.kind === "on";
+        if (state.when === "today") return r.s.today;
+        return true;
+      });
+
+    rows.sort(function (a, b) {
+      if (state.when !== "all" || !useDistance) {
+        if (a.s.rank !== b.s.rank) return a.s.rank - b.s.rank;
+        if (!useDistance && a.s.minsAway !== b.s.minsAway) return (a.s.minsAway || 0) - (b.s.minsAway || 0);
+      }
+      if (useDistance) return a.d - b.d;
+      return a.v.name.localeCompare(b.v.name);
+    });
+
+    listEl.textContent = "";
+    if (!rows.length) {
+      var empty = el("li", "empty");
+      var msg = state.when === "now"
+        ? "No happy hours on in " + c + " right now."
+        : "No happy hours in " + c + " today.";
+      empty.appendChild(el("div", null, msg));
+      var btn = el("button", "chip", state.when === "now" ? "See what's on today" : "See the whole week");
+      btn.addEventListener("click", function () {
+        state.when = state.when === "now" ? "today" : "all";
+        save();
+        render();
+      });
+      empty.appendChild(btn);
+      listEl.appendChild(empty);
+      return;
+    }
+
+    rows.forEach(function (r) {
+      var v = r.v;
+      var li = el("li", "card");
+      var top = el("div", "top");
+      var head = el("div");
+      head.appendChild(el("h2", "name", v.name));
+      head.appendChild(el("p", "where", v.area + (r.d != null ? " · " + distanceText(r.d) : "")));
+      top.appendChild(head);
+      top.appendChild(el("span", "badge " + r.s.kind, r.s.label));
+      li.appendChild(top);
+      li.appendChild(el("p", "deal", v.deal));
+      li.appendChild(el("p", "hours", hoursText(v)));
+
+      var actions = el("div", "actions");
+      var dir = el("a", null, "Directions");
+      dir.href = mapsLink(v);
+      dir.target = "_blank";
+      dir.rel = "noopener";
+      actions.appendChild(dir);
+      if (v.source) {
+        var src = el("a", null, "Source");
+        src.href = v.source;
+        src.target = "_blank";
+        src.rel = "noopener";
+        actions.appendChild(src);
+      }
+      if (v.checked) actions.appendChild(el("span", "checked", checkedText(v.checked)));
+      li.appendChild(actions);
+      listEl.appendChild(li);
+    });
+  }
+
+  function setNote(text) { noteEl.textContent = text || ""; }
+
+  function placeNote() {
+    if (state.place !== "near") { setNote("Showing " + state.place + "."); return; }
+    if (!state.me) return;
+    var near = nearestCity(state.me);
+    if (near.d > FAR_AWAY_KM) {
+      setNote("You're not near Sydney or Melbourne yet, so here's " + near.city + ", the closest city.");
+    } else {
+      setNote("Showing bars near you in " + near.city + ", closest first.");
+    }
+  }
+
+  function locate() {
+    if (!navigator.geolocation) {
+      setNote("This browser can't share your location. Pick a city instead.");
+      return;
+    }
+    setNote("Finding where you are…");
+    navigator.geolocation.getCurrentPosition(function (pos) {
+      state.me = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+      placeNote();
+      render();
+    }, function () {
+      setNote("We couldn't get your location. Allow location for this site, or pick a city.");
+      render();
+    }, { enableHighAccuracy: false, timeout: 15000, maximumAge: 300000 });
+  }
+
+  document.querySelectorAll("[data-place]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      state.place = b.dataset.place;
+      save();
+      if (state.place === "near") locate(); else placeNote();
+      render();
+    });
+  });
+  document.querySelectorAll("[data-when]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      state.when = b.dataset.when;
+      save();
+      render();
+    });
+  });
+
+  if (state.place === "near") locate(); else placeNote();
+  render();
+  // Keep "On now" and "Starts in" up to date while the page is open.
+  setInterval(render, 60000);
+})();
+</script>
+</body>
+</html>
