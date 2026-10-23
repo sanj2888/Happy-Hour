@@ -3,7 +3,7 @@
   "short_name": "Happy Hour",
   "description": "Cheap drinks near you, right now. Happy hours in Sydney and Melbourne.",
   "display": "standalone",
-  "background_color": "#ff8a1f",
+  "background_color": "#1a0b2e",
   "theme_color": "#1a0b2e",
   "icons": [
     { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
