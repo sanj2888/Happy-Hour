@@ -146,6 +146,19 @@
   }
   .chip:active { transform: scale(.96); }
   .chip[aria-pressed="true"] { background: var(--text); border-color: var(--text); color: var(--bg); }
+  .search {
+    width: 100%;
+    margin-top: 12px;
+    border: 1.5px solid var(--chip-line);
+    background: var(--bg);
+    color: var(--text);
+    border-radius: 14px;
+    padding: 12px 14px;
+    font: inherit;
+    font-size: 16px;
+  }
+  .search::placeholder { color: var(--muted); }
+  .search:focus { outline: 2px solid var(--pink); outline-offset: 1px; }
   .surprise {
     width: 100%;
     margin-top: 12px;
@@ -260,6 +273,7 @@
       <button class="chip" data-when="today" aria-pressed="false">Today</button>
       <button class="chip" data-when="all" aria-pressed="false">All week</button>
     </div>
+    <input class="search" id="search" type="search" placeholder="Search a bar, suburb or drink" aria-label="Search a bar, suburb or drink" autocomplete="off">
     <button class="surprise" id="surprise">🎲 Pick a bar for me</button>
   </div>
 
@@ -287,7 +301,7 @@
     return Object.assign({}, v, { slots: parseHours(v.hours || []) });
   });
 
-  var state = { place: "near", when: "now", me: null };
+  var state = { place: "near", when: "now", me: null, query: "" };
   try {
     var saved = JSON.parse(localStorage.getItem(STORE) || "{}");
     if (saved.place) state.place = saved.place;
@@ -426,10 +440,11 @@
     return 6371 * 2 * Math.asin(Math.sqrt(x));
   }
 
+  // Venue positions are approximate, so distances are rounded.
   function distanceText(d) {
-    if (d < 1) return Math.max(50, Math.round(d * 20) * 50) + " m away";
-    if (d < 10) return d.toFixed(1) + " km away";
-    return Math.round(d) + " km away";
+    if (d < 1) return "under 1 km away";
+    if (d < 10) return "about " + d.toFixed(1) + " km away";
+    return "about " + Math.round(d) + " km away";
   }
 
   function nearestCity(me) {
@@ -474,6 +489,11 @@
     return "Checked " + d.toLocaleDateString("en-AU", { day: "numeric", month: "short" });
   }
 
+  function matches(v, query) {
+    var text = (v.name + " " + v.area + " " + v.deal).toLowerCase();
+    return query.toLowerCase().split(/\s+/).every(function (word) { return text.indexOf(word) >= 0; });
+  }
+
   function render() {
     document.querySelectorAll("[data-place]").forEach(function (b) {
       b.setAttribute("aria-pressed", String(b.dataset.place === state.place));
@@ -490,6 +510,7 @@
         return { v: v, s: status(v), d: useDistance ? km(state.me, v) : null };
       })
       .filter(function (r) {
+        if (state.query && !matches(r.v, state.query)) return false;
         if (state.when === "now") return r.s.kind === "on";
         if (state.when === "today") return r.s.today;
         return true;
@@ -509,6 +530,19 @@
     if (!rows.length) {
       var empty = el("li", "empty");
       var isNow = state.when === "now";
+      if (state.query) {
+        empty.appendChild(el("div", "big", "🔍"));
+        empty.appendChild(el("h2", "display", "No luck"));
+        empty.appendChild(el("p", null, "Nothing matches \u201c" + state.query + "\u201d in " + c +
+          (state.when === "all" ? "." : (isNow ? " right now." : " today."))));
+        if (state.when !== "all") {
+          var all = el("button", "chip", "Search the whole week");
+          all.addEventListener("click", function () { state.when = "all"; save(); render(); });
+          empty.appendChild(all);
+        }
+        listEl.appendChild(empty);
+        return;
+      }
       empty.appendChild(el("div", "big", isNow ? "🌵" : "😴"));
       empty.appendChild(el("h2", "display", isNow ? "Dry spell" : "Quiet day"));
       empty.appendChild(el("p", null, isNow
@@ -627,6 +661,10 @@
     });
   });
   document.getElementById("surprise").addEventListener("click", surprise);
+  document.getElementById("search").addEventListener("input", function (e) {
+    state.query = e.target.value.trim();
+    render();
+  });
 
   if (state.place === "near") locate(); else placeNote();
   render();
