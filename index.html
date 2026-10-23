@@ -173,7 +173,7 @@
     return Object.assign({}, v, { slots: parseHours(v.hours || []) });
   });
 
-  var state = { place: "Sydney", when: "now", me: null };
+  var state = { place: "near", when: "now", me: null };
   try {
     var saved = JSON.parse(localStorage.getItem(STORE) || "{}");
     if (saved.place) state.place = saved.place;
@@ -457,10 +457,17 @@
       state.me = { lat: pos.coords.latitude, lon: pos.coords.longitude };
       placeNote();
       render();
-    }, function () {
-      setNote("We couldn't get your location. Allow location for this site, or pick a city.");
+    }, function (err) {
+      var iphone = /iPhone|iPad|iPod/.test(navigator.userAgent);
+      if (err && err.code === 1) {
+        setNote(iphone
+          ? "Your phone is blocking location for this app. Open Settings > Privacy & Security > Location Services, make sure it's on, then tap Safari Websites and choose While Using the App. Then tap Near me again."
+          : "Your phone is blocking location for this app. Tap the icon to the left of the web address, choose Permissions (or Site settings) > Location > Allow, and check Location is on in your phone's settings. Then tap Near me again.");
+      } else {
+        setNote("We couldn't find where you are just now. Check Location is on in your phone's settings, then tap Near me again.");
+      }
       render();
-    }, { enableHighAccuracy: false, timeout: 15000, maximumAge: 300000 });
+    }, { enableHighAccuracy: false, timeout: 20000, maximumAge: 300000 });
   }
 
   document.querySelectorAll("[data-place]").forEach(function (b) {
