@@ -783,14 +783,15 @@
   // Which bigger region each suburb belongs to (for the Area picker). Add new suburbs here.
   var REGIONS = {
     Sydney: {
-      "CBD & harbour": ["Sydney CBD", "Haymarket", "The Rocks", "Circular Quay", "Darling Harbour", "King Street Wharf", "Cockle Bay Wharf", "Pyrmont", "Barangaroo"],
-      "Inner city": ["Surry Hills", "Darlinghurst", "Potts Point", "Chippendale", "Redfern", "Alexandria"],
-      "Inner West": ["Newtown", "Glebe", "Rozelle", "Balmain", "Balmain East", "Dulwich Hill", "Marrickville", "Strathfield South"],
-      "Eastern Suburbs": ["Bondi", "Bondi Beach", "Coogee", "Randwick", "Paddington", "Rose Bay"],
-      "North Shore": ["Crows Nest", "Chatswood", "Mosman", "Macquarie Park", "North Ryde", "Hornsby"],
-      "Northern Beaches": ["Manly", "Freshwater", "Brookvale", "Dee Why", "Mona Vale"],
-      "Western Sydney": ["Parramatta", "Wentworth Point", "Blacktown", "Penrith", "Castle Hill", "Rouse Hill", "Campbelltown"],
-      "South & the Shire": ["South Hurstville", "Rockdale", "Cronulla", "Bangor"],
+      "CBD & harbour": ["Sydney CBD", "Haymarket", "The Rocks", "Circular Quay", "Millers Point", "Darling Harbour", "King Street Wharf", "Cockle Bay Wharf", "Pyrmont", "Barangaroo"],
+      "Inner city": ["Surry Hills", "Darlinghurst", "Potts Point", "Chippendale", "Redfern", "Alexandria", "Eveleigh"],
+      "Inner West": ["Newtown", "Enmore", "Erskineville", "Glebe", "Lilyfield", "Rozelle", "Balmain", "Balmain East", "Drummoyne", "Dulwich Hill", "Marrickville", "Tempe", "Strathfield South"],
+      "Eastern Suburbs": ["Bondi", "Bondi Beach", "Bondi Junction", "Coogee", "Randwick", "Paddington", "Double Bay", "Rose Bay"],
+      "North Shore": ["North Sydney", "Neutral Bay", "Cammeray", "Crows Nest", "St Leonards", "Chatswood", "Mosman", "Gladesville", "Macquarie Park", "North Ryde", "Hornsby"],
+      "Northern Beaches": ["Manly", "Freshwater", "Brookvale", "Dee Why", "Mona Vale", "Newport"],
+      "Western Sydney": ["Parramatta", "North Parramatta", "Wentworth Point", "Blacktown", "Penrith", "Baulkham Hills", "Castle Hill", "Rouse Hill", "Wisemans Ferry"],
+      "South West": ["Bankstown", "Padstow", "Panania", "Campbelltown"],
+      "South & the Shire": ["Hurstville", "South Hurstville", "Penshurst", "Rockdale", "Brighton-Le-Sands", "Taren Point", "Cronulla", "Bangor"],
     },
     Melbourne: {
       "CBD": ["Melbourne CBD"],
@@ -1181,7 +1182,7 @@
   var others = { key: null, status: "idle", list: [] };
   var othersShown = OTHER_PAGE;
 
-  function plainName(name) { return name.toLowerCase().replace(/^the\s+/, "").replace(/[^a-z0-9]+/g, " ").trim(); }
+  function plainName(name) { return name.toLowerCase().replace(/^the\s+/, "").replace(/[^a-z0-9]+/g, ""); }
 
   // True if this OpenStreetMap place is already one of our happy hour venues.
   function isListed(place) {
