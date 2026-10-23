@@ -347,6 +347,27 @@
     border-radius: 999px; padding: 8px 14px;
   }
   .checked { color: var(--muted); font-size: 12px; }
+  .sticky-bar {
+    position: fixed; z-index: 9;
+    top: calc(env(safe-area-inset-top) + 8px); left: 50%;
+    width: min(608px, calc(100% - 24px));
+    transform: translate(-50%, -140%); opacity: 0; pointer-events: none;
+    display: flex; align-items: center; gap: 10px;
+    border: 1.5px solid var(--pink); border-radius: 999px;
+    background: rgba(18, 6, 31, .92);
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    box-shadow: var(--glow-pink), 0 10px 30px rgba(0, 0, 0, .5);
+    color: var(--text); padding: 10px 10px 10px 16px;
+    font: 600 14px/1.2 Inter, system-ui, sans-serif; text-align: left; cursor: pointer;
+    transition: transform .25s ease, opacity .25s ease;
+  }
+  .sticky-bar.show { transform: translate(-50%, 0); opacity: 1; pointer-events: auto; }
+  .sticky-text { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sticky-go {
+    flex: none; border-radius: 999px; padding: 6px 12px;
+    background: var(--sunset); color: #1a0b2e; font-weight: 800; font-size: 13px;
+  }
+  .maps-btn { display: inline-block; margin-top: 12px; text-decoration: none; }
   .toast {
     position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom) + 20px);
     transform: translate(-50%, 20px); opacity: 0;
@@ -460,6 +481,11 @@
     Know a happy hour we're missing? <a href="https://github.com/sanj2888/Happy-Hour/issues/new?title=Happy%20hour%20suggestion" target="_blank" rel="noopener">Spill the tea</a>
   </footer>
 </div>
+
+<button class="sticky-bar" id="sticky-bar" type="button" aria-label="Back to filters">
+  <span class="sticky-text" id="sticky-text"></span>
+  <span class="sticky-go">Filters ↑</span>
+</button>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
@@ -661,6 +687,11 @@
     return e;
   }
 
+  // Google Maps search for something that isn't in our list, near the chosen city.
+  function googleSearch(text) {
+    return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(text + " bar " + city());
+  }
+
   function mapsLink(v) {
     var q = v.name + ", " + v.area + " " + CITIES[v.city].state;
     return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(q);
@@ -692,6 +723,7 @@
     document.getElementById("now-panel").hidden = state.tab !== "now";
     document.getElementById("plan-panel").hidden = state.tab !== "plan";
     if (state.tab === "plan") renderPlan(); else renderNow();
+    if (stickyBar) updateSticky();
   }
 
   // ----- Regions, drink types and saved spots -----
@@ -772,6 +804,7 @@
 
   // ----- Plan ahead: every venue, grouped by area -----
 
+  var planCount = 0;
   var DAY_NAMES = ["Sundays", "Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays"];
 
   function option(parent, value, text) {
@@ -862,6 +895,7 @@
       return true;
     });
 
+    planCount = rows.length;
     var where = areaName();
     var when = weekend ? " this weekend" : day == null ? "" : " on " + DAY_NAMES[day];
     var drink = state.drink ? " with " + (state.drink === "food" ? "food" : state.drink) + " deals" : "";
@@ -956,6 +990,14 @@
           var all = el("button", "chip", "Search the whole week");
           all.addEventListener("click", function () { state.when = "all"; save(); render(); });
           empty.appendChild(all);
+        }
+        if (state.query) {
+          empty.appendChild(el("br"));
+          var maps = el("a", "chip maps-btn", "🗺️ Find \u201c" + state.query + "\u201d on Google Maps");
+          maps.href = googleSearch(state.query);
+          maps.target = "_blank";
+          maps.rel = "noopener";
+          empty.appendChild(maps);
         }
         listEl.appendChild(empty);
         return;
@@ -1303,6 +1345,9 @@
       .forEach(function (v) {
         out.push({ icon: "🍸", name: v.name, sub: v.area + " · " + v.deal, value: v.name, all: true });
       });
+    if (!out.length && q.length >= 3) {
+      out.push({ icon: "🗺️", name: "Find \u201c" + query + "\u201d on Google Maps", sub: "Not in our happy hour list yet", url: googleSearch(query) });
+    }
     return out;
   }
 
@@ -1339,6 +1384,7 @@
   function choose(i) {
     var sg = suggestions[i];
     if (!sg) return;
+    if (sg.url) { window.open(sg.url, "_blank", "noopener"); hideSuggestions(); return; }
     searchEl.value = sg.value;
     typed = sg.value;
     state.query = sg.value;
@@ -1364,6 +1410,7 @@
     if (q.length < 2 || (e.inputType && e.inputType.indexOf("delete") === 0)) return;
     for (var i = 0; i < suggestions.length; i++) {
       var name = suggestions[i].name;
+      if (suggestions[i].url) continue;
       if (name.toLowerCase().indexOf(q) === 0 && name.length > typed.length) {
         searchEl.value = typed + name.slice(typed.length);
         searchEl.setSelectionRange(typed.length, searchEl.value.length);
@@ -1402,6 +1449,42 @@
     else if (e.key === "Enter" && active >= 0) { e.preventDefault(); choose(active); }
     else if (e.key === "Escape") hideSuggestions();
   });
+
+  // ----- Sticky filter summary: shows once the filters scroll off screen -----
+
+  var stickyBar = document.getElementById("sticky-bar");
+
+  function stickySummary() {
+    var bits = [];
+    if (state.tab === "plan") {
+      bits.push(state.planCity);
+      if (state.area !== "all") bits.push(areaName().replace(/^in /, ""));
+      if (state.day === "weekend") bits.push("This weekend");
+      else if (state.day !== "any") bits.push(DAYS[Number(state.day)]);
+      if (state.drink) bits.push(state.drink[0].toUpperCase() + state.drink.slice(1));
+      bits.unshift(planCount + (planCount === 1 ? " spot" : " spots"));
+    } else {
+      bits.push(state.place === "near" ? "📍 Near me" : state.place);
+      bits.push({ now: "🔥 On now", today: "Today", all: "All week" }[state.when]);
+      if (state.savedOnly) bits.push("❤️ Saved");
+      if (state.drink) bits.push(state.drink[0].toUpperCase() + state.drink.slice(1));
+      if (state.query) bits.push("\u201c" + state.query + "\u201d");
+      bits.unshift(shown.length + (shown.length === 1 ? " spot" : " spots"));
+    }
+    return bits.join(" · ");
+  }
+
+  function updateSticky() {
+    var panel = document.getElementById(state.tab === "plan" ? "plan-panel" : "now-panel");
+    var pastFilters = panel.getBoundingClientRect().bottom < 0;
+    if (pastFilters) document.getElementById("sticky-text").textContent = stickySummary();
+    stickyBar.classList.toggle("show", pastFilters);
+  }
+
+  stickyBar.addEventListener("click", function () {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+  window.addEventListener("scroll", updateSticky, { passive: true });
 
   if (state.place === "near") locate();
   render();

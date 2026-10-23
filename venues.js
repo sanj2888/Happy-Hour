@@ -1104,6 +1104,36 @@ window.VENUES = [
     source: "https://www.theurbanlist.com/sydney/a-list/sydneys-best-barefoot-bowls",
     checked: "2026-10-23",
   },
+  {
+    name: "Establishment",
+    city: "Sydney",
+    area: "Sydney CBD",
+    lat: -33.8645, lon: 151.2075,
+    deal: "$8 schooners and house wine and spirits, $10.50 pints, $16 Aperol spritz, $19 cocktails",
+    hours: [{ days: "Mon-Fri", from: "17:00", to: "19:00" }],
+    source: "https://merivale.com/venues/establishmentbar/",
+    checked: "2026-10-23",
+  },
+  {
+    name: "Hotel CBD",
+    city: "Sydney",
+    area: "Sydney CBD",
+    lat: -33.8676, lon: 151.2063,
+    deal: "Cheap schooners, pints, spirits, wine, Aperol spritz and cocktails",
+    hours: [{ days: "Mon-Fri", from: "16:00", to: "18:00" }],
+    source: "https://merivale.com/venues/hotelcbd/",
+    checked: "2026-10-23",
+  },
+  {
+    name: "Jacksons on George",
+    city: "Sydney",
+    area: "Sydney CBD",
+    lat: -33.8620, lon: 151.2075,
+    deal: "$8 beers, $9 wine, $16 cocktails (Public Bar and rooftop)",
+    hours: [{ days: "Mon-Sat", from: "16:00", to: "18:00" }],
+    source: "https://jacksonsongeorge.com.au/whats-on/happy-hour-on-george/",
+    checked: "2026-10-23",
+  },
 
   // ---------- Melbourne ----------
   {
