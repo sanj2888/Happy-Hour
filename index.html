@@ -223,6 +223,17 @@
     font-weight: 700;
     line-height: 1.35;
   }
+  .members {
+    display: inline-block;
+    margin: 10px 0 0;
+    border: 1.5px dashed var(--purple);
+    color: var(--purple);
+    border-radius: 999px;
+    padding: 3px 10px;
+    font-size: 13px;
+    font-weight: 700;
+  }
+  @media (prefers-color-scheme: dark) { .members { border-color: #b48cff; color: #b48cff; } }
   .hours { margin: 6px 0 0; color: var(--muted); font-size: 14px; }
   .actions { display: flex; gap: 10px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
   .go {
@@ -490,7 +501,7 @@
   }
 
   function matches(v, query) {
-    var text = (v.name + " " + v.area + " " + v.deal).toLowerCase();
+    var text = (v.name + " " + v.area + " " + v.deal + (v.members ? " members club" : "")).toLowerCase();
     return query.toLowerCase().split(/\s+/).every(function (word) { return text.indexOf(word) >= 0; });
   }
 
@@ -570,6 +581,7 @@
       top.appendChild(el("span", "badge " + r.s.kind, r.s.label));
       li.appendChild(top);
       li.appendChild(el("p", "deal", v.deal));
+      if (v.members) li.appendChild(el("span", "members", "🎟️ Members only"));
       li.appendChild(el("p", "hours", "🕓 " + hoursText(v)));
 
       var actions = el("div", "actions");
