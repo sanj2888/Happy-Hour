@@ -5,7 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Happy Hour Finder</title>
 <meta name="description" content="Find bars with a happy hour on near you in Sydney and Melbourne.">
-<meta name="theme-color" content="#1f1a17">
+<meta name="theme-color" content="#e8860c">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Happy hour">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -54,7 +60,11 @@
     color: var(--text);
     font: 16px/1.45 Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
   }
-  .wrap { max-width: 640px; margin: 0 auto; padding: 0 16px 48px; }
+  .wrap {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: env(safe-area-inset-top) max(16px, env(safe-area-inset-right)) 48px max(16px, env(safe-area-inset-left));
+  }
   header { padding: 28px 0 8px; }
   h1 { margin: 0; font-size: 30px; line-height: 1.1; letter-spacing: -.02em; }
   h1 span { color: var(--brand); }

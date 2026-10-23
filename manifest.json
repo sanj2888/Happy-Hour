@@ -1,0 +1,12 @@
+{
+  "name": "Happy hour finder",
+  "short_name": "Happy hour",
+  "description": "Bars with a happy hour on near you in Sydney and Melbourne.",
+  "display": "standalone",
+  "background_color": "#faf6f1",
+  "theme_color": "#e8860c",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
