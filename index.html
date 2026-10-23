@@ -3,53 +3,71 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Happy Hour Finder</title>
-<meta name="description" content="Find bars with a happy hour on near you in Sydney and Melbourne.">
-<meta name="theme-color" content="#e8860c">
+<title>Happy Hour</title>
+<meta name="description" content="Cheap drinks near you, right now. Happy hours in Sydney and Melbourne.">
+<meta name="theme-color" content="#1a0b2e">
 <link rel="manifest" href="manifest.json">
-<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Happy hour">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Happy Hour">
+
+<!-- The preview that shows when the link is shared (WhatsApp, Instagram, Messages) -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://sanj2888.github.io/Happy-Hour/">
+<meta property="og:title" content="Happy Hour 🍹 Cheap drinks near you">
+<meta property="og:description" content="Find bars pouring happy hour right now in Sydney and Melbourne.">
+<meta property="og:image" content="https://sanj2888.github.io/Happy-Hour/thumbnail.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://sanj2888.github.io/Happy-Hour/thumbnail.png">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #faf6f1;
+    --bg: #fff6ee;
     --card: #ffffff;
-    --text: #1f1a17;
-    --muted: #6f655d;
-    --line: #ebe2d8;
-    --brand: #e8860c;
-    --brand-ink: #ffffff;
-    --chip: #f1e9df;
-    --on: #1d8a4e;
-    --on-bg: #e3f4ea;
-    --soon: #a35f00;
-    --soon-bg: #fdf0db;
-    --off: #6f655d;
-    --off-bg: #f1ece6;
-    --shadow: 0 1px 2px rgba(31, 26, 23, .06), 0 4px 14px rgba(31, 26, 23, .05);
+    --text: #1a0b2e;
+    --muted: #6b5a7a;
+    --line: #f0e2d6;
+    --chip: #ffffff;
+    --chip-line: #ecdccf;
+    --pink: #ff3d8b;
+    --orange: #ff8a1f;
+    --yellow: #ffd23f;
+    --purple: #7b3fe4;
+    --teal: #12c2a6;
+    --sunset: linear-gradient(120deg, #ff3d8b 0%, #ff8a1f 55%, #ffd23f 100%);
+    --hero-text: #ffffff;
+    --on: #0b8f5a;
+    --on-bg: #d9f8e9;
+    --soon: #b35300;
+    --soon-bg: #ffecc8;
+    --off: #6b5a7a;
+    --off-bg: #f2eaf5;
+    --shadow: 0 2px 0 rgba(26, 11, 46, .06), 0 10px 30px rgba(255, 61, 139, .10);
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #161210;
-      --card: #211b18;
-      --text: #f5ede5;
-      --muted: #a89c91;
-      --line: #342b26;
-      --brand: #f59a2a;
-      --brand-ink: #1f1a17;
-      --chip: #2c2420;
-      --on: #5fd394;
-      --on-bg: #17332a;
-      --soon: #f3b75e;
-      --soon-bg: #3a2b14;
-      --off: #a89c91;
-      --off-bg: #2a2320;
-      --shadow: none;
+      --bg: #12081f;
+      --card: #1e1030;
+      --text: #fff4fb;
+      --muted: #b9a6cc;
+      --line: #2f1d47;
+      --chip: #22133a;
+      --chip-line: #3a2558;
+      --on: #3df2a5;
+      --on-bg: #0f3a2c;
+      --soon: #ffc14d;
+      --soon-bg: #3d2a10;
+      --off: #b9a6cc;
+      --off-bg: #2a1a40;
+      --shadow: 0 10px 30px rgba(0, 0, 0, .35);
     }
   }
   * { box-sizing: border-box; }
@@ -60,101 +78,197 @@
     color: var(--text);
     font: 16px/1.45 Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
   }
+  .display { font-family: Unbounded, Inter, system-ui, sans-serif; letter-spacing: -.01em; }
+
+  /* ---- Top banner ---- */
+  .hero {
+    position: relative;
+    overflow: hidden;
+    background: var(--sunset);
+    color: var(--hero-text);
+    padding: calc(env(safe-area-inset-top) + 28px) 16px 64px;
+    border-radius: 0 0 32px 32px;
+  }
+  .hero-inner { max-width: 640px; margin: 0 auto; position: relative; z-index: 1; }
+  .logo {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(26, 11, 46, .18);
+    border-radius: 999px; padding: 6px 12px 6px 8px;
+    font-weight: 700; font-size: 14px;
+  }
+  .logo span { font-size: 18px; line-height: 1; }
+  .hero h1 { margin: 18px 0 0; font-size: 44px; line-height: 1; font-weight: 800; text-shadow: 0 3px 0 rgba(26, 11, 46, .15); }
+  .hero p { margin: 10px 0 0; font-size: 17px; font-weight: 500; opacity: .95; }
+  .bubble { position: absolute; border-radius: 50%; background: rgba(255, 255, 255, .22); animation: rise 9s linear infinite; }
+  .bubble:nth-child(1) { width: 18px; height: 18px; right: 12%; bottom: -20px; animation-delay: 0s; }
+  .bubble:nth-child(2) { width: 10px; height: 10px; right: 26%; bottom: -20px; animation-delay: 2.5s; animation-duration: 7s; }
+  .bubble:nth-child(3) { width: 26px; height: 26px; right: 4%; bottom: -30px; animation-delay: 4s; animation-duration: 11s; }
+  .bubble:nth-child(4) { width: 12px; height: 12px; right: 38%; bottom: -20px; animation-delay: 6s; }
+  .hero-glass { position: absolute; right: -6px; top: calc(env(safe-area-inset-top) + 18px); font-size: 92px; transform: rotate(12deg); opacity: .95; }
+  @keyframes rise {
+    from { transform: translateY(0); opacity: 0; }
+    15% { opacity: 1; }
+    to { transform: translateY(-260px); opacity: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) { .bubble { animation: none; display: none; } }
+
   .wrap {
     max-width: 640px;
-    margin: 0 auto;
-    padding: env(safe-area-inset-top) max(16px, env(safe-area-inset-right)) 48px max(16px, env(safe-area-inset-left));
+    margin: -40px auto 0;
+    padding: 0 max(16px, env(safe-area-inset-right)) 48px max(16px, env(safe-area-inset-left));
+    position: relative;
+    z-index: 2;
   }
-  header { padding: 28px 0 8px; }
-  h1 { margin: 0; font-size: 30px; line-height: 1.1; letter-spacing: -.02em; }
-  h1 span { color: var(--brand); }
-  .sub { margin: 6px 0 0; color: var(--muted); }
 
-  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
-  .chip {
+  /* ---- Controls ---- */
+  .panel {
+    background: var(--card);
     border: 1px solid var(--line);
+    border-radius: 24px;
+    padding: 14px;
+    box-shadow: var(--shadow);
+  }
+  .chips { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+  .chips::-webkit-scrollbar { display: none; }
+  .chips + .chips { margin-top: 10px; }
+  .chip {
+    flex: none;
+    border: 1.5px solid var(--chip-line);
     background: var(--chip);
     color: var(--text);
     border-radius: 999px;
-    padding: 8px 14px;
+    padding: 9px 15px;
     font: inherit;
     font-size: 15px;
-    font-weight: 500;
+    font-weight: 600;
     cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
+    transition: transform .12s ease;
   }
-  .chip[aria-pressed="true"] { background: var(--brand); border-color: var(--brand); color: var(--brand-ink); }
-  .chip svg { width: 16px; height: 16px; }
-  .chips + .chips { margin-top: 10px; }
+  .chip:active { transform: scale(.96); }
+  .chip[aria-pressed="true"] { background: var(--text); border-color: var(--text); color: var(--bg); }
+  .surprise {
+    width: 100%;
+    margin-top: 12px;
+    border: 0;
+    border-radius: 16px;
+    padding: 14px 16px;
+    background: var(--sunset);
+    color: #1a0b2e;
+    font: 800 16px/1.2 Unbounded, Inter, system-ui, sans-serif;
+    cursor: pointer;
+    box-shadow: 0 4px 0 rgba(26, 11, 46, .18);
+    transition: transform .12s ease;
+  }
+  .surprise:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(26, 11, 46, .18); }
 
-  .note { margin: 14px 0 0; font-size: 14px; color: var(--muted); min-height: 20px; }
+  .note { margin: 14px 4px 0; font-size: 14px; color: var(--muted); min-height: 20px; }
 
-  .list { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 12px; }
+  /* ---- Bar cards ---- */
+  .list { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 14px; }
   .card {
+    --accent: var(--pink);
+    position: relative;
     background: var(--card);
     border: 1px solid var(--line);
-    border-radius: 16px;
-    padding: 16px;
+    border-radius: 24px;
+    padding: 18px 18px 16px 22px;
     box-shadow: var(--shadow);
+    overflow: hidden;
+    transition: transform .2s ease, box-shadow .2s ease;
   }
+  .card::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 6px; background: var(--accent); }
+  .card:nth-child(4n+2) { --accent: var(--orange); }
+  .card:nth-child(4n+3) { --accent: var(--purple); }
+  .card:nth-child(4n+4) { --accent: var(--teal); }
+  .card.picked { animation: pop .6s ease; box-shadow: 0 0 0 3px var(--accent), var(--shadow); }
+  @keyframes pop { 40% { transform: scale(1.03) rotate(-.6deg); } }
+
   .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
-  .name { margin: 0; font-size: 18px; font-weight: 700; line-height: 1.25; }
-  .where { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
+  .name { margin: 0; font-size: 19px; font-weight: 800; line-height: 1.2; }
+  .where { margin: 4px 0 0; color: var(--muted); font-size: 14px; font-weight: 500; }
   .badge {
     flex: none;
     border-radius: 999px;
-    padding: 4px 10px;
+    padding: 5px 11px;
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 700;
     white-space: nowrap;
   }
   .badge.on { color: var(--on); background: var(--on-bg); }
+  .badge.on::before {
+    content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+    background: currentColor; margin-right: 6px; vertical-align: 1px;
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes pulse { 50% { opacity: .3; } }
   .badge.soon { color: var(--soon); background: var(--soon-bg); }
   .badge.off { color: var(--off); background: var(--off-bg); }
-  .deal { margin: 12px 0 0; font-size: 16px; font-weight: 500; }
-  .hours { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
-  .actions { display: flex; gap: 16px; align-items: center; margin-top: 12px; flex-wrap: wrap; font-size: 14px; }
-  .actions a { color: var(--brand); font-weight: 600; text-decoration: none; }
-  .actions a:hover { text-decoration: underline; }
-  .checked { color: var(--muted); font-size: 13px; margin-left: auto; }
 
-  .empty { text-align: center; padding: 32px 16px; color: var(--muted); }
-  .empty button { margin-top: 12px; }
+  .deal {
+    margin: 14px 0 0;
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1.35;
+  }
+  .hours { margin: 6px 0 0; color: var(--muted); font-size: 14px; }
+  .actions { display: flex; gap: 10px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
+  .go {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--text); color: var(--bg);
+    text-decoration: none; font-weight: 700; font-size: 14px;
+    border-radius: 999px; padding: 9px 14px;
+  }
+  .src { color: var(--muted); font-size: 13px; font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
+  .checked { color: var(--muted); font-size: 12px; margin-left: auto; }
 
-  footer { margin-top: 32px; font-size: 14px; color: var(--muted); }
-  footer a { color: var(--brand); }
+  .empty {
+    text-align: center;
+    padding: 36px 20px;
+    background: var(--card);
+    border: 1.5px dashed var(--chip-line);
+    border-radius: 24px;
+  }
+  .empty .big { font-size: 44px; line-height: 1; }
+  .empty h2 { margin: 12px 0 4px; font-size: 20px; }
+  .empty p { margin: 0; color: var(--muted); }
+  .empty .chip { margin-top: 16px; }
+
+  footer { margin-top: 32px; font-size: 13px; color: var(--muted); text-align: center; line-height: 1.6; }
+  footer a { color: var(--pink); font-weight: 600; }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <h1>Happy hour <span>finder</span></h1>
-    <p class="sub">Bars with cheap drinks near you, in Sydney and Melbourne.</p>
-  </header>
-
-  <div class="chips" role="group" aria-label="Where">
-    <button class="chip" data-place="near" aria-pressed="false">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
-      Near me
-    </button>
-    <button class="chip" data-place="Sydney" aria-pressed="false">Sydney</button>
-    <button class="chip" data-place="Melbourne" aria-pressed="false">Melbourne</button>
+<header class="hero">
+  <div class="bubble"></div><div class="bubble"></div><div class="bubble"></div><div class="bubble"></div>
+  <div class="hero-glass" aria-hidden="true">🍹</div>
+  <div class="hero-inner">
+    <div class="logo"><span aria-hidden="true">🍻</span> Happy Hour</div>
+    <h1 class="display">Thirsty?</h1>
+    <p>Cheap drinks near you, right now.</p>
   </div>
-  <div class="chips" role="group" aria-label="When">
-    <button class="chip" data-when="now" aria-pressed="false">On now</button>
-    <button class="chip" data-when="today" aria-pressed="false">Today</button>
-    <button class="chip" data-when="all" aria-pressed="false">All week</button>
+</header>
+
+<div class="wrap">
+  <div class="panel">
+    <div class="chips" role="group" aria-label="Where">
+      <button class="chip" data-place="near" aria-pressed="false">📍 Near me</button>
+      <button class="chip" data-place="Sydney" aria-pressed="false">Sydney</button>
+      <button class="chip" data-place="Melbourne" aria-pressed="false">Melbourne</button>
+    </div>
+    <div class="chips" role="group" aria-label="When">
+      <button class="chip" data-when="now" aria-pressed="false">🔥 On now</button>
+      <button class="chip" data-when="today" aria-pressed="false">Today</button>
+      <button class="chip" data-when="all" aria-pressed="false">All week</button>
+    </div>
+    <button class="surprise" id="surprise">🎲 Pick a bar for me</button>
   </div>
 
   <p class="note" id="note" aria-live="polite"></p>
   <ul class="list" id="list"></ul>
 
   <footer>
-    Deals change often, so check with the bar before you go.
-    Know a happy hour we're missing, or spot a mistake?
-    <a href="https://github.com/sanj2888/Happy-Hour/issues/new?title=Happy%20hour%20suggestion" target="_blank" rel="noopener">Tell us</a>.
+    18+ only. Drink responsibly and check deals with the bar before you go.<br>
+    Know a happy hour we're missing? <a href="https://github.com/sanj2888/Happy-Hour/issues/new?title=Happy%20hour%20suggestion" target="_blank" rel="noopener">Spill the tea</a>
   </footer>
 </div>
 
@@ -245,6 +359,11 @@
     return h + " hr" + (m ? " " + m + " min" : "");
   }
 
+  function onNow(minsLeft, to) {
+    var label = minsLeft <= 90 ? "On now · " + wait(minsLeft) + " left" : "On till " + clock(to);
+    return { kind: "on", rank: 0, label: label, today: true, minsLeft: minsLeft };
+  }
+
   // Works out whether a venue's happy hour is on now, later today or another day.
   function status(v) {
     var now = cityNow(v.city);
@@ -254,10 +373,10 @@
       var s = v.slots[i];
       var overnight = s.to <= s.from;
       if (s.day === now.day && now.mins >= s.from && (overnight || now.mins < s.to)) {
-        return { kind: "on", rank: 0, label: "On now, ends " + clock(s.to), today: true };
+        return onNow(overnight ? s.to + 1440 - now.mins : s.to - now.mins, s.to);
       }
       if (overnight && s.day === yesterday && now.mins < s.to) {
-        return { kind: "on", rank: 0, label: "On now, ends " + clock(s.to), today: true };
+        return onNow(s.to - now.mins, s.to);
       }
     }
     // Next start within the coming week.
@@ -281,16 +400,16 @@
       };
     }
     if (endedToday.length) {
-      return { kind: "off", rank: 2, today: true, label: "Finished at " + clock(endedToday[0].to), minsAway: best ? best.minsAway : 1e9 };
+      return { kind: "off", rank: 2, today: true, label: "Done for today", minsAway: best ? best.minsAway : 1e9 };
     }
     if (best) {
-      var when = best.ahead === 1 ? "tomorrow" : DAYS[best.slot.day];
-      return { kind: "off", rank: 3, today: false, label: "Next " + when + " " + clock(best.slot.from), minsAway: best.minsAway };
+      var when = best.ahead === 1 ? "Tomorrow" : DAYS[best.slot.day];
+      return { kind: "off", rank: 3, today: false, label: when + " " + clock(best.slot.from), minsAway: best.minsAway };
     }
     return { kind: "off", rank: 4, today: false, label: "No times listed", minsAway: 1e9 };
   }
 
-  // Groups the hours for display, e.g. "Mon-Fri 4 pm to 7 pm".
+  // Groups the hours for display, e.g. "Mon–Fri, 4 pm to 7 pm".
   function hoursText(v) {
     return (v.hours || []).map(function (h) {
       var days = /^(daily|every ?day)$/i.test(String(h.days).trim()) ? "Every day" : h.days.replace(/-/g, "–");
@@ -326,6 +445,7 @@
 
   var listEl = document.getElementById("list");
   var noteEl = document.getElementById("note");
+  var shown = [];
 
   function save() {
     try { localStorage.setItem(STORE, JSON.stringify({ place: state.place, when: state.when })); } catch (e) {}
@@ -351,7 +471,7 @@
   function checkedText(iso) {
     var d = new Date(iso + "T00:00:00");
     if (isNaN(d)) return "";
-    return "Checked " + d.toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" });
+    return "Checked " + d.toLocaleDateString("en-AU", { day: "numeric", month: "short" });
   }
 
   function render() {
@@ -383,17 +503,20 @@
       if (useDistance) return a.d - b.d;
       return a.v.name.localeCompare(b.v.name);
     });
+    shown = rows;
 
     listEl.textContent = "";
     if (!rows.length) {
       var empty = el("li", "empty");
-      var msg = state.when === "now"
-        ? "No happy hours on in " + c + " right now."
-        : "No happy hours in " + c + " today.";
-      empty.appendChild(el("div", null, msg));
-      var btn = el("button", "chip", state.when === "now" ? "See what's on today" : "See the whole week");
+      var isNow = state.when === "now";
+      empty.appendChild(el("div", "big", isNow ? "🌵" : "😴"));
+      empty.appendChild(el("h2", "display", isNow ? "Dry spell" : "Quiet day"));
+      empty.appendChild(el("p", null, isNow
+        ? "No happy hours pouring in " + c + " right now."
+        : "No happy hours in " + c + " today."));
+      var btn = el("button", "chip", isNow ? "See what's on later today" : "See the whole week");
       btn.addEventListener("click", function () {
-        state.when = state.when === "now" ? "today" : "all";
+        state.when = isNow ? "today" : "all";
         save();
         render();
       });
@@ -407,22 +530,22 @@
       var li = el("li", "card");
       var top = el("div", "top");
       var head = el("div");
-      head.appendChild(el("h2", "name", v.name));
-      head.appendChild(el("p", "where", v.area + (r.d != null ? " · " + distanceText(r.d) : "")));
+      head.appendChild(el("h2", "name display", v.name));
+      head.appendChild(el("p", "where", "📍 " + v.area + (r.d != null ? " · " + distanceText(r.d) : "")));
       top.appendChild(head);
       top.appendChild(el("span", "badge " + r.s.kind, r.s.label));
       li.appendChild(top);
       li.appendChild(el("p", "deal", v.deal));
-      li.appendChild(el("p", "hours", hoursText(v)));
+      li.appendChild(el("p", "hours", "🕓 " + hoursText(v)));
 
       var actions = el("div", "actions");
-      var dir = el("a", null, "Directions");
+      var dir = el("a", "go", "Take me there →");
       dir.href = mapsLink(v);
       dir.target = "_blank";
       dir.rel = "noopener";
       actions.appendChild(dir);
       if (v.source) {
-        var src = el("a", null, "Source");
+        var src = el("a", "src", "Source");
         src.href = v.source;
         src.target = "_blank";
         src.rel = "noopener";
@@ -443,7 +566,7 @@
     if (near.d > FAR_AWAY_KM) {
       setNote("You're not near Sydney or Melbourne yet, so here's " + near.city + ", the closest city.");
     } else {
-      setNote("Showing bars near you in " + near.city + ", closest first.");
+      setNote("Bars near you in " + near.city + ", closest first.");
     }
   }
 
@@ -470,6 +593,24 @@
     }, { enableHighAccuracy: false, timeout: 20000, maximumAge: 300000 });
   }
 
+  // Picks a random bar from what's on screen (on now first), and shows it off.
+  function surprise() {
+    if (!shown.length && state.when !== "all") {
+      state.when = state.when === "now" ? "today" : "all";
+      save();
+      render();
+    }
+    if (!shown.length) return;
+    var pool = shown.filter(function (r) { return r.s.kind === "on"; });
+    if (!pool.length) pool = shown;
+    var pick = pool[Math.floor(Math.random() * pool.length)];
+    var card = listEl.children[shown.indexOf(pick)];
+    document.querySelectorAll(".card.picked").forEach(function (c) { c.classList.remove("picked"); });
+    card.classList.add("picked");
+    card.scrollIntoView({ behavior: "smooth", block: "center" });
+    setNote("Tonight's pick: " + pick.v.name + " 🎉");
+  }
+
   document.querySelectorAll("[data-place]").forEach(function (b) {
     b.addEventListener("click", function () {
       state.place = b.dataset.place;
@@ -485,11 +626,15 @@
       render();
     });
   });
+  document.getElementById("surprise").addEventListener("click", surprise);
 
   if (state.place === "near") locate(); else placeNote();
   render();
   // Keep "On now" and "Starts in" up to date while the page is open.
-  setInterval(render, 60000);
+  setInterval(function () {
+    var picked = document.querySelector(".card.picked");
+    if (!picked) render();
+  }, 60000);
 })();
 </script>
 </body>
