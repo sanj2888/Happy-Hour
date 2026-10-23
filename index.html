@@ -282,7 +282,24 @@
   }
   @media (prefers-color-scheme: dark) { .members { border-color: #b48cff; color: #b48cff; } }
   .hours { margin: 6px 0 0; color: var(--muted); font-size: 14px; }
-  .actions { display: flex; gap: 10px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
+  .actions { display: flex; gap: 8px; align-items: center; margin-top: 14px; }
+  .icon-btn {
+    flex: none;
+    width: 40px; height: 40px;
+    display: inline-grid; place-items: center;
+    border: 1.5px solid var(--chip-line);
+    background: var(--chip);
+    color: var(--text);
+    border-radius: 50%;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    transition: transform .12s ease;
+  }
+  .icon-btn:active { transform: scale(.9); }
+  .icon-btn svg { width: 18px; height: 18px; }
+  .icon-btn.saved { border-color: var(--pink); background: rgba(255, 61, 139, .12); }
+  .meta { display: flex; gap: 10px; align-items: baseline; margin-top: 10px; }
   .go {
     display: inline-flex; align-items: center; gap: 6px;
     background: var(--text); color: var(--bg);
@@ -290,7 +307,15 @@
     border-radius: 999px; padding: 9px 14px;
   }
   .src { color: var(--muted); font-size: 13px; font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
-  .checked { color: var(--muted); font-size: 12px; margin-left: auto; }
+  .checked { color: var(--muted); font-size: 12px; }
+  .toast {
+    position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom) + 20px);
+    transform: translate(-50%, 20px); opacity: 0;
+    background: var(--text); color: var(--bg);
+    padding: 10px 16px; border-radius: 999px; font-weight: 700; font-size: 14px;
+    transition: opacity .2s ease, transform .2s ease; pointer-events: none; z-index: 10;
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
   .empty {
     text-align: center;
@@ -336,6 +361,13 @@
       <button class="chip" data-when="today" aria-pressed="false">Today</button>
       <button class="chip" data-when="all" aria-pressed="false">All week</button>
     </div>
+    <div class="chips day-chips" role="group" aria-label="Filters">
+      <button class="chip" data-saved-only aria-pressed="false">❤️ Saved</button>
+      <button class="chip" data-drink="beer" aria-pressed="false">🍺 Beer</button>
+      <button class="chip" data-drink="wine" aria-pressed="false">🍷 Wine</button>
+      <button class="chip" data-drink="cocktails" aria-pressed="false">🍸 Cocktails</button>
+      <button class="chip" data-drink="food" aria-pressed="false">🦪 Food</button>
+    </div>
     <input class="search" id="search" type="search" placeholder="Search a bar, suburb or drink" aria-label="Search a bar, suburb or drink" autocomplete="off">
     <button class="surprise" id="surprise">🎲 Pick a bar for me</button>
   </div>
@@ -358,6 +390,13 @@
       <button class="chip" data-day="6" aria-pressed="false">Sat</button>
       <button class="chip" data-day="0" aria-pressed="false">Sun</button>
     </div>
+    <span class="label">Drinks</span>
+    <div class="chips day-chips" role="group" aria-label="Drinks">
+      <button class="chip" data-drink="beer" aria-pressed="false">🍺 Beer</button>
+      <button class="chip" data-drink="wine" aria-pressed="false">🍷 Wine</button>
+      <button class="chip" data-drink="cocktails" aria-pressed="false">🍸 Cocktails</button>
+      <button class="chip" data-drink="food" aria-pressed="false">🦪 Food</button>
+    </div>
   </div>
 
   <p class="note" id="note" aria-live="polite"></p>
@@ -368,6 +407,8 @@
     Know a happy hour we're missing? <a href="https://github.com/sanj2888/Happy-Hour/issues/new?title=Happy%20hour%20suggestion" target="_blank" rel="noopener">Spill the tea</a>
   </footer>
 </div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="venues.js"></script>
 <script>
@@ -384,7 +425,10 @@
     return Object.assign({}, v, { slots: parseHours(v.hours || []) });
   });
 
-  var state = { tab: "now", place: "near", when: "now", me: null, query: "", planCity: "Sydney", area: "all", day: "any" };
+  var state = {
+    tab: "now", place: "near", when: "now", me: null, query: "",
+    planCity: "Sydney", area: "all", day: "any", drink: null, savedOnly: false,
+  };
   try {
     var saved = JSON.parse(localStorage.getItem(STORE) || "{}");
     ["tab", "place", "when", "planCity", "area", "day"].forEach(function (k) { if (saved[k]) state[k] = saved[k]; });
@@ -584,31 +628,142 @@
     document.querySelectorAll("[data-tab]").forEach(function (b) {
       b.setAttribute("aria-selected", String(b.dataset.tab === state.tab));
     });
+    document.querySelectorAll("[data-drink]").forEach(function (b) {
+      b.setAttribute("aria-pressed", String(b.dataset.drink === state.drink));
+    });
+    document.querySelector("[data-saved-only]").setAttribute("aria-pressed", String(state.savedOnly));
     document.getElementById("now-panel").hidden = state.tab !== "now";
     document.getElementById("plan-panel").hidden = state.tab !== "plan";
     if (state.tab === "plan") renderPlan(); else renderNow();
+  }
+
+  // ----- Regions, drink types and saved spots -----
+
+  // Which bigger region each suburb belongs to (for the Area picker). Add new suburbs here.
+  var REGIONS = {
+    Sydney: {
+      "CBD & harbour": ["Sydney CBD", "Haymarket", "The Rocks", "Circular Quay", "Darling Harbour", "King Street Wharf", "Cockle Bay Wharf", "Pyrmont", "Barangaroo"],
+      "Inner city": ["Surry Hills", "Darlinghurst", "Potts Point", "Chippendale", "Redfern", "Alexandria"],
+      "Inner West": ["Newtown", "Glebe", "Rozelle", "Balmain", "Balmain East", "Dulwich Hill", "Marrickville", "Strathfield South"],
+      "Eastern Suburbs": ["Bondi", "Bondi Beach", "Coogee", "Randwick", "Paddington", "Rose Bay"],
+      "North Shore": ["Crows Nest", "Chatswood", "Mosman", "Macquarie Park", "North Ryde", "Hornsby"],
+      "Northern Beaches": ["Manly", "Freshwater", "Brookvale", "Dee Why", "Mona Vale"],
+      "Western Sydney": ["Parramatta", "Wentworth Point", "Blacktown", "Penrith", "Castle Hill", "Rouse Hill", "Campbelltown"],
+      "South & the Shire": ["South Hurstville", "Rockdale", "Cronulla", "Bangor"],
+    },
+    Melbourne: {
+      "CBD": ["Melbourne CBD"],
+      "Southbank & South Wharf": ["Southbank", "South Wharf"],
+      "Inner North": ["Fitzroy"],
+    },
+  };
+  var OTHER_REGION = "Other areas";
+
+  function regionOf(v) {
+    var regions = REGIONS[v.city] || {};
+    for (var r in regions) if (regions[r].indexOf(v.area) >= 0) return r;
+    return OTHER_REGION;
+  }
+
+  var DRINKS = {
+    beer: /beer|schooner|pint|lager|tap|stein|stubbie|hawkes|estrella|middy|pot\b|jug/i,
+    wine: /wine|ros[eé]|prosecco|bubbles|sparkling|sav|shiraz/i,
+    cocktails: /cocktail|martini|margarita|marg\b|negroni|spritz|sangria|sour|espresso/i,
+    food: /oyster|snack|taco|pizza|burger|slider|hot dog|popcorn|lobster|bites|gyoza/i,
+  };
+
+  var SAVED_STORE = "happy-hour-saved";
+  var saved = [];
+  try { saved = JSON.parse(localStorage.getItem(SAVED_STORE) || "[]"); } catch (e) {}
+  function key(v) { return v.city + "|" + v.name; }
+  function isSaved(v) { return saved.indexOf(key(v)) >= 0; }
+  function toggleSaved(v) {
+    var k = key(v), i = saved.indexOf(k);
+    if (i >= 0) saved.splice(i, 1); else saved.push(k);
+    try { localStorage.setItem(SAVED_STORE, JSON.stringify(saved)); } catch (e) {}
+    toast(i >= 0 ? "Removed from saved" : "Saved ❤️");
+  }
+
+  var toastTimer;
+  function toast(text) {
+    var t = document.getElementById("toast");
+    t.textContent = text;
+    t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.classList.remove("show"); }, 1800);
+  }
+
+  // Sends the bar to the group chat (the phone's share menu, or WhatsApp on a computer).
+  function share(v) {
+    var text = "🍻 Happy hour at " + v.name + " (" + v.area + ")\n" + v.deal + "\n🕓 " + hoursText(v) +
+      "\n📍 " + mapsLink(v);
+    var url = location.origin + location.pathname;
+    if (navigator.share) {
+      navigator.share({ title: "Happy hour at " + v.name, text: text, url: url }).catch(function () {});
+    } else {
+      window.open("https://wa.me/?text=" + encodeURIComponent(text + "\n\nFound on " + url), "_blank", "noopener");
+    }
+  }
+
+  function passesFilters(v) {
+    if (state.drink && !DRINKS[state.drink].test(v.deal)) return false;
+    return true;
   }
 
   // ----- Plan ahead: every venue, grouped by area -----
 
   var DAY_NAMES = ["Sundays", "Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays"];
 
+  function option(parent, value, text) {
+    var o = el("option", null, text);
+    o.value = value;
+    parent.appendChild(o);
+  }
+
+  // Fills the Area picker: all, saved, then each region with its suburbs.
   function areaOptions(cityVenues) {
-    var counts = {};
-    cityVenues.forEach(function (v) { counts[v.area] = (counts[v.area] || 0) + 1; });
     var select = document.getElementById("area");
-    var areas = Object.keys(counts).sort(function (a, b) { return a.localeCompare(b); });
-    if (state.area !== "all" && !counts[state.area]) state.area = "all";
-    select.textContent = "";
-    var all = el("option", null, "All areas (" + cityVenues.length + ")");
-    all.value = "all";
-    select.appendChild(all);
-    areas.forEach(function (a) {
-      var o = el("option", null, a + " (" + counts[a] + ")");
-      o.value = a;
-      select.appendChild(o);
+    var byRegion = {};
+    cityVenues.forEach(function (v) {
+      var r = regionOf(v);
+      byRegion[r] = byRegion[r] || {};
+      byRegion[r][v.area] = (byRegion[r][v.area] || 0) + 1;
     });
+    var values = ["all", "saved"];
+    select.textContent = "";
+    option(select, "all", "All areas (" + cityVenues.length + ")");
+    option(select, "saved", "❤️ My saved spots (" + cityVenues.filter(isSaved).length + ")");
+    var order = Object.keys(REGIONS[state.planCity] || {}).concat([OTHER_REGION]);
+    order.forEach(function (r) {
+      if (!byRegion[r]) return;
+      var areas = Object.keys(byRegion[r]).sort(function (a, b) { return a.localeCompare(b); });
+      var total = areas.reduce(function (n, a) { return n + byRegion[r][a]; }, 0);
+      var group = el("optgroup");
+      group.label = r;
+      option(group, "region:" + r, "All of " + r + " (" + total + ")");
+      values.push("region:" + r);
+      areas.forEach(function (a) {
+        option(group, a, a + " (" + byRegion[r][a] + ")");
+        values.push(a);
+      });
+      select.appendChild(group);
+    });
+    if (values.indexOf(state.area) < 0) state.area = "all";
     select.value = state.area;
+  }
+
+  function inArea(v) {
+    if (state.area === "all") return true;
+    if (state.area === "saved") return isSaved(v);
+    if (state.area.indexOf("region:") === 0) return regionOf(v) === state.area.slice(7);
+    return v.area === state.area;
+  }
+
+  function areaName() {
+    if (state.area === "all") return "in " + state.planCity;
+    if (state.area === "saved") return "in your saved spots";
+    if (state.area.indexOf("region:") === 0) return "in " + state.area.slice(7);
+    return "in " + state.area;
   }
 
   // The happy hour times on one day, e.g. "4 pm to 6 pm".
@@ -632,14 +787,15 @@
     areaOptions(cityVenues);
     var day = state.day === "any" ? null : Number(state.day);
     var rows = cityVenues.filter(function (v) {
-      if (state.area !== "all" && v.area !== state.area) return false;
+      if (!inArea(v) || !passesFilters(v)) return false;
       if (day != null && !v.slots.some(function (s) { return s.day === day; })) return false;
       return true;
     });
 
-    var where = state.area === "all" ? state.planCity : state.area;
+    var where = areaName();
     var when = day == null ? "" : " on " + DAY_NAMES[day];
-    setNote(rows.length + " happy hour" + (rows.length === 1 ? "" : "s") + " in " + where + when + ".");
+    var drink = state.drink ? " with " + (state.drink === "food" ? "food" : state.drink) + " deals" : "";
+    setNote(rows.length + " happy hour" + (rows.length === 1 ? "" : "s") + drink + " " + where + when + ".");
 
     listEl.textContent = "";
     shown = [];
@@ -647,7 +803,9 @@
       var empty = el("li", "empty");
       empty.appendChild(el("div", "big", "😴"));
       empty.appendChild(el("h2", "display", "Nothing listed"));
-      empty.appendChild(el("p", null, "No happy hours in " + where + when + " yet."));
+      empty.appendChild(el("p", null, state.area === "saved" && !saved.length
+        ? "Tap the ♡ on any bar to save it here."
+        : "No happy hours " + where + when + drink + " yet."));
       var any = el("button", "chip", "Try any day");
       any.addEventListener("click", function () { state.day = "any"; save(); render(); });
       if (day != null) empty.appendChild(any);
@@ -690,6 +848,8 @@
       })
       .filter(function (r) {
         if (state.query && !matches(r.v, state.query)) return false;
+        if (state.savedOnly && !isSaved(r.v)) return false;
+        if (!passesFilters(r.v)) return false;
         if (state.when === "now") return r.s.kind === "on";
         if (state.when === "today") return r.s.today;
         return true;
@@ -709,11 +869,13 @@
     if (!rows.length) {
       var empty = el("li", "empty");
       var isNow = state.when === "now";
-      if (state.query) {
-        empty.appendChild(el("div", "big", "🔍"));
-        empty.appendChild(el("h2", "display", "No luck"));
-        empty.appendChild(el("p", null, "Nothing matches \u201c" + state.query + "\u201d in " + c +
-          (state.when === "all" ? "." : (isNow ? " right now." : " today."))));
+      if (state.query || state.drink || state.savedOnly) {
+        empty.appendChild(el("div", "big", state.savedOnly && !saved.length ? "❤️" : "🔍"));
+        empty.appendChild(el("h2", "display", state.savedOnly && !saved.length ? "Nothing saved yet" : "No luck"));
+        empty.appendChild(el("p", null, state.savedOnly && !saved.length
+          ? "Tap the ♡ on any bar to save it."
+          : "Nothing matches " + (state.query ? "\u201c" + state.query + "\u201d" : "those filters") + " in " + c +
+            (state.when === "all" ? "." : (isNow ? " right now." : " today."))));
         if (state.when !== "all") {
           var all = el("button", "chip", "Search the whole week");
           all.addEventListener("click", function () { state.when = "all"; save(); render(); });
@@ -762,15 +924,28 @@
     dir.target = "_blank";
     dir.rel = "noopener";
     actions.appendChild(dir);
+    var heart = el("button", "icon-btn" + (isSaved(v) ? " saved" : ""), isSaved(v) ? "❤️" : "♡");
+    heart.setAttribute("aria-label", isSaved(v) ? "Remove " + v.name + " from saved" : "Save " + v.name);
+    heart.setAttribute("aria-pressed", String(isSaved(v)));
+    heart.addEventListener("click", function () { toggleSaved(v); render(); });
+    actions.appendChild(heart);
+    var shareBtn = el("button", "icon-btn");
+    shareBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M7 8l5-5 5 5"/><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>';
+    shareBtn.setAttribute("aria-label", "Share " + v.name);
+    shareBtn.addEventListener("click", function () { share(v); });
+    actions.appendChild(shareBtn);
+    li.appendChild(actions);
+
+    var meta = el("div", "meta");
     if (v.source) {
       var src = el("a", "src", "Source");
       src.href = v.source;
       src.target = "_blank";
       src.rel = "noopener";
-      actions.appendChild(src);
+      meta.appendChild(src);
     }
-    if (v.checked) actions.appendChild(el("span", "checked", checkedText(v.checked)));
-    li.appendChild(actions);
+    if (v.checked) meta.appendChild(el("span", "checked", checkedText(v.checked)));
+    li.appendChild(meta);
     return li;
   }
 
@@ -871,6 +1046,17 @@
       render();
     });
   });
+  document.querySelectorAll("[data-drink]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      state.drink = state.drink === b.dataset.drink ? null : b.dataset.drink;
+      render();
+    });
+  });
+  document.querySelector("[data-saved-only]").addEventListener("click", function () {
+    state.savedOnly = !state.savedOnly;
+    if (state.savedOnly && state.when === "now") state.when = "all";
+    render();
+  });
   document.getElementById("area").addEventListener("change", function (e) {
     state.area = e.target.value;
     save();
@@ -883,6 +1069,11 @@
 
   if (state.place === "near") locate();
   render();
+
+  // Keeps a copy of the app on the phone so it still opens with poor signal.
+  if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
+    navigator.serviceWorker.register("sw.js").catch(function () {});
+  }
   // Keep "On now" and "Starts in" up to date while the page is open.
   setInterval(function () {
     var picked = document.querySelector(".card.picked");

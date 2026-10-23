@@ -10,3 +10,5 @@ Guidance for AI coding agents working on this repo.
 - Look: fun and bold for 18–35s (sunset gradient, Unbounded headings, emoji welcome). Colours are CSS variables in `:root`, redefined for dark mode. `thumbnail.png` is the link preview (1200×630).
 - Cities for now: Sydney and Melbourne (`CITIES` in `index.html`).
 - Before pushing, open the page in Chromium (Playwright) at phone width (390px), in light and dark mode, and check there are no console errors.
+- New suburbs need a region in `REGIONS` in `index.html` (for the Plan ahead area picker); unmapped suburbs fall under "Other areas".
+- Saved spots live only on each phone (localStorage `happy-hour-saved`). `sw.js` caches the app network-first so it opens with poor signal.
