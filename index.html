@@ -215,7 +215,7 @@
 
   .tabs {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr;
     gap: 4px;
     padding: 4px;
     margin-bottom: 12px;
@@ -229,8 +229,9 @@
     background: transparent;
     color: var(--muted);
     border-radius: 999px;
-    padding: 11px 8px;
-    font: 700 15px/1.2 Inter, system-ui, sans-serif;
+    padding: 11px 4px;
+    font: 700 14px/1.2 Inter, system-ui, sans-serif;
+    white-space: nowrap;
     cursor: pointer;
   }
   .tab[aria-selected="true"] { background: var(--sunset); color: #1a0b2e; box-shadow: var(--glow-pink); }
@@ -301,6 +302,10 @@
   }
   @keyframes pulse { 50% { opacity: .3; } }
   .badge.soon { color: var(--soon); background: var(--soon-bg); }
+  .badge.on.last {
+    color: var(--orange); background: rgba(255, 138, 31, .14);
+    box-shadow: inset 0 0 0 1px rgba(255, 138, 31, .45); text-shadow: 0 0 8px rgba(255, 138, 31, .6);
+  }
   .badge.off { color: var(--off); background: var(--off-bg); }
 
   .deal {
@@ -367,6 +372,36 @@
     flex: none; border-radius: 999px; padding: 6px 12px;
     background: var(--sunset); color: #1a0b2e; font-weight: 800; font-size: 13px;
   }
+  .map-wrap { margin-top: 12px; }
+  .map {
+    height: 62vh; min-height: 360px;
+    border-radius: 24px; overflow: hidden;
+    border: 1.5px solid var(--pink);
+    box-shadow: var(--glow-pink), var(--shadow);
+    background: #0f0820;
+  }
+  .map-key { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 10px 4px 0; font-size: 13px; color: var(--muted); }
+  .map-key i {
+    display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px;
+    background: var(--c); box-shadow: 0 0 8px var(--c);
+  }
+  .pin { filter: drop-shadow(0 0 6px currentColor); }
+  .leaflet-popup-content-wrapper, .leaflet-popup-tip {
+    background: #1d0f33 !important; color: var(--text) !important;
+    border: 1px solid var(--pink); box-shadow: var(--glow-pink) !important;
+  }
+  .leaflet-popup-content { margin: 14px 16px !important; font: 14px/1.4 Inter, system-ui, sans-serif; min-width: 200px; }
+  .leaflet-container a.leaflet-popup-close-button { color: var(--muted); }
+  .leaflet-container { font-family: Inter, system-ui, sans-serif; }
+  .leaflet-control-attribution { background: rgba(11, 4, 20, .75) !important; color: var(--muted) !important; }
+  .leaflet-control-attribution a { color: var(--cyan) !important; }
+  .leaflet-bar a { background: #1d0f33 !important; color: var(--text) !important; border-color: var(--chip-line) !important; }
+  .pop-name { margin: 0 0 6px; font: 800 16px/1.2 Unbounded, Inter, system-ui, sans-serif; }
+  .pop .badge { display: inline-block; margin-bottom: 8px; }
+  .pop .deal { margin: 0; font-size: 15px; }
+  .pop .hours { margin: 6px 0 0; font-size: 13px; }
+  .pop .members { margin-top: 8px; }
+  .pop .go { margin-top: 10px; }
   .maps-btn { display: inline-block; margin-top: 12px; text-decoration: none; }
   .toast {
     position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom) + 20px);
@@ -418,6 +453,7 @@
   <div class="tabs" role="tablist" aria-label="View">
     <button class="tab" role="tab" data-tab="now" aria-selected="true">🔥 Right now</button>
     <button class="tab" role="tab" data-tab="plan" aria-selected="false">🗓️ Plan ahead</button>
+    <button class="tab" role="tab" data-tab="map" aria-selected="false">🗺️ Map</button>
   </div>
 
   <div class="panel" id="now-panel">
@@ -474,6 +510,15 @@
   </div>
 
   <p class="note" id="note" aria-live="polite"></p>
+  <div class="map-wrap" id="map-wrap" hidden>
+    <div class="map" id="map" role="region" aria-label="Map of happy hours"></div>
+    <div class="map-key" aria-hidden="true">
+      <span><i style="--c: var(--on)"></i>On now</span>
+      <span><i style="--c: var(--orange)"></i>Last call</span>
+      <span><i style="--c: var(--soon)"></i>Later today</span>
+      <span><i style="--c: var(--purple)"></i>Another day</span>
+    </div>
+  </div>
   <ul class="list" id="list"></ul>
 
   <footer>
@@ -578,9 +623,13 @@
     return h + " hr" + (m ? " " + m + " min" : "");
   }
 
+  var LAST_CALL = 30; // minutes left when a happy hour shows "Last call"
+
   function onNow(minsLeft, to) {
-    var label = minsLeft <= 90 ? "On now · " + wait(minsLeft) + " left" : "On till " + clock(to);
-    return { kind: "on", rank: 0, label: label, today: true, minsLeft: minsLeft };
+    var last = minsLeft <= LAST_CALL;
+    var label = last ? "Last call · " + wait(minsLeft) + " left"
+      : minsLeft <= 90 ? "On now · " + wait(minsLeft) + " left" : "On till " + clock(to);
+    return { kind: "on", last: last, rank: 0, label: label, today: true, minsLeft: minsLeft };
   }
 
   // Works out whether a venue's happy hour is on now, later today or another day.
@@ -720,9 +769,12 @@
       b.setAttribute("aria-pressed", String(b.dataset.drink === state.drink));
     });
     document.querySelector("[data-saved-only]").setAttribute("aria-pressed", String(state.savedOnly));
-    document.getElementById("now-panel").hidden = state.tab !== "now";
+    document.getElementById("now-panel").hidden = state.tab === "plan";
     document.getElementById("plan-panel").hidden = state.tab !== "plan";
-    if (state.tab === "plan") renderPlan(); else renderNow();
+    document.getElementById("map-wrap").hidden = state.tab !== "map";
+    if (state.tab === "plan") renderPlan();
+    else if (state.tab === "map") renderMap();
+    else renderNow();
     if (stickyBar) updateSticky();
   }
 
@@ -940,7 +992,7 @@
     renderOtherBars();
   }
 
-  function renderHappyHours() {
+  function markNowButtons() {
     placeNote();
     document.querySelectorAll("[data-place]").forEach(function (b) {
       b.setAttribute("aria-pressed", String(b.dataset.place === state.place));
@@ -948,7 +1000,10 @@
     document.querySelectorAll("[data-when]").forEach(function (b) {
       b.setAttribute("aria-pressed", String(b.dataset.when === state.when));
     });
+  }
 
+  // The happy hours matching the Right now filters, best first.
+  function nowRows() {
     var c = city();
     var useDistance = state.place === "near" && state.me && nearestCity(state.me).d <= FAR_AWAY_KM;
     var rows = venues
@@ -973,6 +1028,13 @@
       if (useDistance) return a.d - b.d;
       return a.v.name.localeCompare(b.v.name);
     });
+    return rows;
+  }
+
+  function renderHappyHours() {
+    markNowButtons();
+    var c = city();
+    var rows = nowRows();
     shown = rows;
 
     listEl.textContent = "";
@@ -1021,6 +1083,93 @@
     rows.forEach(function (r) {
       listEl.appendChild(card(r.v, r.s, r.d));
     });
+  }
+
+  // ----- Map tab (Leaflet with free OpenStreetMap / CARTO tiles, loaded only when opened) -----
+
+  var LEAFLET = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/";
+  var leaflet = { status: "idle", map: null, layer: null, viewKey: null, markers: {} };
+  var PIN_COLOURS = { on: "#3df2a5", last: "#ff8a1f", soon: "#ffc14d", off: "#b48cff" };
+
+  function loadLeaflet() {
+    if (leaflet.status !== "idle") return;
+    leaflet.status = "loading";
+    var css = document.createElement("link");
+    css.rel = "stylesheet";
+    css.href = LEAFLET + "leaflet.min.css";
+    document.head.appendChild(css);
+    var js = document.createElement("script");
+    js.src = LEAFLET + "leaflet.min.js";
+    js.onload = function () { leaflet.status = "ready"; render(); };
+    js.onerror = function () { leaflet.status = "error"; render(); };
+    document.head.appendChild(js);
+  }
+
+  function popup(v, badge) {
+    var box = el("div", "pop");
+    box.appendChild(el("h3", "pop-name", v.name));
+    box.appendChild(el("span", "badge " + badge.kind + (badge.last ? " last" : ""), badge.label));
+    box.appendChild(el("p", "deal", v.deal));
+    if (v.members) box.appendChild(el("span", "members", "🎟️ Members only"));
+    box.appendChild(el("p", "hours", "📍 " + v.area + " · " + hoursText(v)));
+    var go = el("a", "go", "Take me there →");
+    go.href = mapsLink(v);
+    go.target = "_blank";
+    go.rel = "noopener";
+    box.appendChild(go);
+    return box;
+  }
+
+  function renderMap() {
+    markNowButtons();
+    listEl.textContent = "";
+    var rows = nowRows();
+    shown = rows;
+    loadLeaflet();
+    if (leaflet.status === "loading") { setNote("Loading the map…"); return; }
+    if (leaflet.status === "error") {
+      setNote("The map can't load right now (no signal?). The Right now tab still works.");
+      return;
+    }
+    var L = window.L, c = city();
+    if (!leaflet.map) {
+      leaflet.map = L.map("map", { zoomControl: true });
+      L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+        maxZoom: 19, subdomains: "abcd",
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+      }).addTo(leaflet.map);
+      leaflet.layer = L.layerGroup().addTo(leaflet.map);
+    }
+    var map = leaflet.map;
+    map.invalidateSize();
+    leaflet.layer.clearLayers();
+    leaflet.markers = {};
+    rows.forEach(function (r) {
+      var colour = PIN_COLOURS[r.s.last ? "last" : r.s.kind];
+      var pin = L.circleMarker([r.v.lat, r.v.lon], {
+        radius: r.s.kind === "on" ? 10 : 7, color: colour, fillColor: colour,
+        fillOpacity: r.s.kind === "off" ? 0.45 : 0.9, weight: 2, className: "pin",
+      }).bindPopup(popup(r.v, r.s));
+      pin.addTo(leaflet.layer);
+      leaflet.markers[key(r.v)] = pin;
+    });
+    var near = state.place === "near" && state.me && nearestCity(state.me).d <= FAR_AWAY_KM;
+    if (near) {
+      L.circleMarker([state.me.lat, state.me.lon], {
+        radius: 8, color: "#ffffff", weight: 3, fillColor: "#2de2ff", fillOpacity: 1, className: "pin",
+      }).bindTooltip("You're here").addTo(leaflet.layer);
+    }
+    // Only move the map when the place changes, so it doesn't jump while you look around.
+    var viewKey = near ? "me" : c;
+    if (leaflet.viewKey !== viewKey) {
+      leaflet.viewKey = viewKey;
+      if (near) map.setView([state.me.lat, state.me.lon], 14);
+      else if (rows.length) map.fitBounds(rows.map(function (r) { return [r.v.lat, r.v.lon]; }), { padding: [30, 30], maxZoom: 14 });
+      else map.setView([CITIES[c].lat, CITIES[c].lon], 12);
+    }
+    var count = rows.length + (rows.length === 1 ? " happy hour" : " happy hours");
+    setNote(rows.length ? count + " on the map. Tap a pin for the deal." :
+      "No happy hours match in " + c + (state.when === "now" ? " right now. Try Today or All week." : "."));
   }
 
   // ----- Other bars & pubs nearby (from OpenStreetMap, free) -----
@@ -1165,7 +1314,7 @@
     head.appendChild(el("h2", "name display", v.name));
     head.appendChild(el("p", "where", "📍 " + v.area + (distance != null ? " · " + distanceText(distance) : "")));
     top.appendChild(head);
-    top.appendChild(el("span", "badge " + badge.kind, badge.label));
+    top.appendChild(el("span", "badge " + badge.kind + (badge.last ? " last" : ""), badge.label));
     li.appendChild(top);
     li.appendChild(el("p", "deal", v.deal));
     if (v.members) li.appendChild(el("span", "members", "🎟️ Members only"));
@@ -1246,6 +1395,12 @@
     var pool = shown.filter(function (r) { return r.s.kind === "on"; });
     if (!pool.length) pool = shown;
     var pick = pool[Math.floor(Math.random() * pool.length)];
+    if (state.tab === "map") {
+      var pin = leaflet.markers[key(pick.v)];
+      if (pin) { leaflet.map.setView(pin.getLatLng(), 15); pin.openPopup(); }
+      setNote("Tonight's pick: " + pick.v.name + " 🎉");
+      return;
+    }
     var card = listEl.children[shown.indexOf(pick)];
     document.querySelectorAll(".card.picked").forEach(function (c) { c.classList.remove("picked"); });
     card.classList.add("picked");
@@ -1274,7 +1429,13 @@
       state.tab = b.dataset.tab;
       save();
       render();
-      window.scrollTo({ top: 0 });
+      if (state.tab === "map") {
+        // Jump straight to the map; the sticky bar at the top leads back to the filters.
+        var wrap = document.getElementById("map-wrap");
+        window.scrollTo({ top: wrap.getBoundingClientRect().top + window.scrollY - 70, behavior: "smooth" });
+      } else {
+        window.scrollTo({ top: 0 });
+      }
     });
   });
   document.querySelectorAll("[data-plan-city]").forEach(function (b) {
@@ -1495,8 +1656,8 @@
   }
   // Keep "On now" and "Starts in" up to date while the page is open.
   setInterval(function () {
-    var picked = document.querySelector(".card.picked");
-    if (!picked) render();
+    // Don't redraw while a bar is highlighted or a map pin is open.
+    if (!document.querySelector(".card.picked, .leaflet-popup")) render();
   }, 60000);
 })();
 </script>

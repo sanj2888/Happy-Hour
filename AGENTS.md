@@ -13,3 +13,4 @@ Guidance for AI coding agents working on this repo.
 - New suburbs need a region in `REGIONS` in `index.html` (for the Plan ahead area picker); unmapped suburbs fall under "Other areas".
 - Saved spots live only on each phone (localStorage `happy-hour-saved`). `sw.js` caches the app network-first so it opens with poor signal.
 - Near me also lists other bars, pubs, nightclubs and beer gardens within 2 km from OpenStreetMap's free Overpass API (no key), under the happy hours. Places already in `venues.js` are left out; any OSM `happy_hours` tag is shown. Results are cached per location for the session.
+- The Map tab loads Leaflet 1.9.4 from cdnjs only when opened, with CARTO dark tiles (free, OpenStreetMap data, attribution kept). It uses the Right now filters. Happy hours with 30 minutes or less left show "Last call" (`LAST_CALL`).
