@@ -143,7 +143,7 @@
     padding: 14px;
     box-shadow: var(--shadow);
   }
-  .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chips { display: flex; gap: 7px; flex-wrap: wrap; }
   .chips::-webkit-scrollbar { display: none; }
   .chips + .chips { margin-top: 10px; }
   .chip {
@@ -152,7 +152,7 @@
     background: var(--chip);
     color: var(--text);
     border-radius: 999px;
-    padding: 9px 15px;
+    padding: 9px 13px;
     font: inherit;
     font-size: 15px;
     font-weight: 600;
@@ -176,6 +176,7 @@
     font-size: 16px;
   }
   .search::placeholder { color: var(--muted); }
+  .search::selection { background: rgba(255, 79, 216, .45); color: #fff; }
   .search-box { position: relative; }
   .suggest {
     position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 5;
@@ -345,7 +346,6 @@
     text-decoration: none; font-weight: 700; font-size: 14px;
     border-radius: 999px; padding: 8px 14px;
   }
-  .src { color: var(--muted); font-size: 13px; font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
   .checked { color: var(--muted); font-size: 12px; }
   .toast {
     position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom) + 20px);
@@ -998,13 +998,6 @@
     li.appendChild(actions);
 
     var meta = el("div", "meta");
-    if (v.source) {
-      var src = el("a", "src", "Source");
-      src.href = v.source;
-      src.target = "_blank";
-      src.rel = "noopener";
-      meta.appendChild(src);
-    }
     if (v.checked) meta.appendChild(el("span", "checked", checkedText(v.checked)));
     li.appendChild(meta);
     return li;
@@ -1128,6 +1121,7 @@
   var searchEl = document.getElementById("search");
   var suggestEl = document.getElementById("suggest");
   var suggestions = [], active = -1;
+  var typed = ""; // what the person actually typed, without the filled-in ending
 
   function highlight(parent, text, query) {
     var i = text.toLowerCase().indexOf(query.toLowerCase());
@@ -1163,7 +1157,7 @@
   }
 
   function showSuggestions() {
-    suggestions = buildSuggestions(searchEl.value.trim());
+    suggestions = buildSuggestions(typed.trim());
     active = -1;
     suggestEl.textContent = "";
     suggestions.forEach(function (sg, i) {
@@ -1173,7 +1167,7 @@
       li.appendChild(el("span", "s-icon", sg.icon));
       var text = el("span", "s-text");
       var name = el("span", "s-name");
-      highlight(name, sg.name, searchEl.value.trim());
+      highlight(name, sg.name, typed.trim());
       text.appendChild(name);
       text.appendChild(el("span", "s-sub", sg.sub));
       li.appendChild(text);
@@ -1196,6 +1190,7 @@
     var sg = suggestions[i];
     if (!sg) return;
     searchEl.value = sg.value;
+    typed = sg.value;
     state.query = sg.value;
     // A bar may not be on right now, so show its whole week.
     if (sg.all) { state.when = "all"; save(); }
@@ -1212,15 +1207,46 @@
     searchEl.setAttribute("aria-activedescendant", "suggest-" + active);
   }
 
+  // Fills in the rest of the best match inside the box, highlighted, e.g. "New" + "town".
+  // Typing carries on over it; Go, Enter, Tab or the right arrow accepts it.
+  function autofill(e) {
+    var q = typed.trim().toLowerCase();
+    if (q.length < 2 || (e.inputType && e.inputType.indexOf("delete") === 0)) return;
+    for (var i = 0; i < suggestions.length; i++) {
+      var name = suggestions[i].name;
+      if (name.toLowerCase().indexOf(q) === 0 && name.length > typed.length) {
+        searchEl.value = typed + name.slice(typed.length);
+        searchEl.setSelectionRange(typed.length, searchEl.value.length);
+        setActive(i);
+        return;
+      }
+    }
+  }
+
+  function filledIn() {
+    return searchEl.value.length > typed.length && searchEl.selectionStart === typed.length &&
+      searchEl.selectionEnd === searchEl.value.length;
+  }
+
   searchEl.addEventListener("input", function (e) {
-    state.query = e.target.value.trim();
+    typed = e.target.value;
+    state.query = typed.trim();
     render();
     showSuggestions();
+    autofill(e);
   });
-  searchEl.addEventListener("focus", showSuggestions);
-  searchEl.addEventListener("blur", hideSuggestions);
+  searchEl.addEventListener("focus", function () {
+    typed = searchEl.value;
+    showSuggestions();
+  });
+  searchEl.addEventListener("blur", function () {
+    // Leaving the box without accepting drops the filled-in ending.
+    if (searchEl.value !== typed) searchEl.value = typed;
+    hideSuggestions();
+  });
   searchEl.addEventListener("keydown", function (e) {
     if (suggestEl.hidden) return;
+    if ((e.key === "Tab" || e.key === "ArrowRight") && filledIn() && active >= 0) { e.preventDefault(); choose(active); return; }
     if (e.key === "ArrowDown") { e.preventDefault(); setActive(active + 1); }
     else if (e.key === "ArrowUp") { e.preventDefault(); setActive(active - 1); }
     else if (e.key === "Enter" && active >= 0) { e.preventDefault(); choose(active); }
