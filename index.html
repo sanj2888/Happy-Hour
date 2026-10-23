@@ -368,6 +368,16 @@
   .empty p { margin: 0; color: var(--muted); }
   .empty .chip { margin-top: 16px; }
 
+  .others-head { margin-top: 26px; flex-direction: column; align-items: flex-start; gap: 4px; }
+  .card.mini { padding: 14px 16px 14px 20px; background: rgba(22, 10, 38, .7); }
+  .card.mini::before { background: var(--chip-line); box-shadow: none; }
+  .card.mini .name { font-size: 16px; margin: 0; }
+  .card.mini .deal { font-size: 15px; margin-top: 8px; color: var(--yellow); }
+  .card.mini .actions { margin-top: 10px; }
+  .others-msg { list-style: none; color: var(--muted); font-size: 14px; padding: 4px 4px; }
+  .others-msg.small { font-size: 13px; }
+  .others-msg a { color: var(--pink); font-weight: 600; }
+
   footer { margin-top: 32px; font-size: 13px; color: var(--muted); text-align: center; line-height: 1.6; }
   footer a { color: var(--pink); font-weight: 600; }
 </style>
@@ -892,6 +902,11 @@
   // ----- Right now -----
 
   function renderNow() {
+    renderHappyHours();
+    renderOtherBars();
+  }
+
+  function renderHappyHours() {
     placeNote();
     document.querySelectorAll("[data-place]").forEach(function (b) {
       b.setAttribute("aria-pressed", String(b.dataset.place === state.place));
@@ -964,6 +979,141 @@
     rows.forEach(function (r) {
       listEl.appendChild(card(r.v, r.s, r.d));
     });
+  }
+
+  // ----- Other bars & pubs nearby (from OpenStreetMap, free) -----
+  // Shown under the happy hours when Near me is on, for when you want a drink regardless.
+
+  var OTHER_RADIUS_M = 2000;
+  var OTHER_PAGE = 15;
+  var OTHER_TYPES = { bar: "🍸 Bar", pub: "🍺 Pub", nightclub: "🪩 Nightclub", biergarten: "🌳 Beer garden" };
+  var others = { key: null, status: "idle", list: [] };
+  var othersShown = OTHER_PAGE;
+
+  function plainName(name) { return name.toLowerCase().replace(/^the\s+/, "").replace(/[^a-z0-9]+/g, " ").trim(); }
+
+  // True if this OpenStreetMap place is already one of our happy hour venues.
+  function isListed(place) {
+    var n = plainName(place.name);
+    return venues.some(function (v) { return plainName(v.name) === n && km(v, place) < 1.5; });
+  }
+
+  function loadOthers() {
+    var k = state.me.lat.toFixed(3) + "," + state.me.lon.toFixed(3);
+    if (others.key === k) return;
+    others = { key: k, status: "loading", list: [] };
+    othersShown = OTHER_PAGE;
+    try {
+      var cached = sessionStorage.getItem("happy-hour-osm:" + k);
+      if (cached) { others.list = JSON.parse(cached); others.status = "ready"; return; }
+    } catch (e) {}
+    var query = '[out:json][timeout:20];nwr["amenity"~"^(bar|pub|nightclub|biergarten)$"](around:' +
+      OTHER_RADIUS_M + "," + state.me.lat + "," + state.me.lon + ");out center tags 100;";
+    fetch("https://overpass-api.de/api/interpreter", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: "data=" + encodeURIComponent(query),
+    })
+      .then(function (res) { return res.ok ? res.json() : Promise.reject(res.status); })
+      .then(function (data) {
+        if (others.key !== k) return;
+        others.list = (data.elements || [])
+          .map(function (e) {
+            var t = e.tags || {};
+            return {
+              name: t.name, type: t.amenity,
+              lat: e.lat != null ? e.lat : e.center && e.center.lat,
+              lon: e.lon != null ? e.lon : e.center && e.center.lon,
+              hours: t.opening_hours || "", happy: t.happy_hours || "",
+            };
+          })
+          .filter(function (o) { return o.name && o.lat != null && !isListed(o); });
+        others.status = "ready";
+        try { sessionStorage.setItem("happy-hour-osm:" + k, JSON.stringify(others.list)); } catch (e) {}
+        render();
+      })
+      .catch(function () {
+        if (others.key !== k) return;
+        others.status = "error";
+        render();
+      });
+  }
+
+  // Makes OpenStreetMap times readable: "Mo-Fr 17:00-19:00" becomes "Mon–Fri 5 pm to 7 pm".
+  var OSM_DAYS = { Mo: "Mon", Tu: "Tue", We: "Wed", Th: "Thu", Fr: "Fri", Sa: "Sat", Su: "Sun", PH: "public holidays" };
+  function readableHours(text) {
+    return text
+      .replace(/\b(Mo|Tu|We|Th|Fr|Sa|Su|PH)\b/g, function (d) { return OSM_DAYS[d]; })
+      .replace(/(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/g, function (m, h1, m1, h2, m2) {
+        return clock(Number(h1) * 60 + Number(m1)) + " to " + clock(Number(h2) * 60 + Number(m2));
+      })
+      .replace(/(Mon|Tue|Wed|Thu|Fri|Sat|Sun)-(Mon|Tue|Wed|Thu|Fri|Sat|Sun)/g, "$1–$2")
+      .replace(/;\s*/g, " · ")
+      .replace(/^24\/7$/, "Open 24 hours");
+  }
+
+  function otherDistance(d) {
+    if (d < 1) return Math.max(50, Math.round(d * 20) * 50) + " m away";
+    return d.toFixed(1) + " km away";
+  }
+
+  function otherCard(o, d) {
+    var li = el("li", "card mini");
+    li.appendChild(el("h3", "name display", o.name));
+    li.appendChild(el("p", "where", (OTHER_TYPES[o.type] || "🍸 Bar") + " · " + otherDistance(d)));
+    if (o.happy) li.appendChild(el("p", "deal", "Happy hour: " + readableHours(o.happy)));
+    if (o.hours) li.appendChild(el("p", "hours", "🕓 Open " + readableHours(o.hours)));
+    var actions = el("div", "actions");
+    var dir = el("a", "go", "Take me there →");
+    dir.href = "https://www.google.com/maps/search/?api=1&query=" + o.lat + "," + o.lon;
+    dir.target = "_blank";
+    dir.rel = "noopener";
+    actions.appendChild(dir);
+    li.appendChild(actions);
+    return li;
+  }
+
+  function otherMessage(text, button) {
+    var li = el("li", "others-msg", text);
+    if (button) li.appendChild(button);
+    listEl.appendChild(li);
+  }
+
+  function renderOtherBars() {
+    if (state.place !== "near" || !state.me || state.savedOnly || state.drink) return;
+    loadOthers();
+    var head = el("li", "area-head others-head", "Other bars & pubs nearby");
+    head.appendChild(el("span", null, "Not in our happy hour list"));
+    listEl.appendChild(head);
+
+    if (others.status === "loading") return otherMessage("Looking for bars near you…");
+    if (others.status === "error") {
+      var retry = el("button", "chip", "Try again");
+      retry.addEventListener("click", function () { others.key = null; render(); });
+      return otherMessage("Couldn't load other bars just now. ", retry);
+    }
+    var q = state.query.toLowerCase();
+    var list = others.list
+      .filter(function (o) { return !q || o.name.toLowerCase().indexOf(q) >= 0; })
+      .map(function (o) { return { o: o, d: km(state.me, o) }; })
+      // Any with a happy hour on the map go first, then closest first.
+      .sort(function (a, b) { return (b.o.happy ? 1 : 0) - (a.o.happy ? 1 : 0) || a.d - b.d; });
+    if (!list.length) return otherMessage(q ? "No other bars match \u201c" + state.query + "\u201d." : "No other bars found within 2 km.");
+
+    list.slice(0, othersShown).forEach(function (r) { listEl.appendChild(otherCard(r.o, r.d)); });
+    if (list.length > othersShown) {
+      var more = el("button", "chip", "Show " + Math.min(OTHER_PAGE, list.length - othersShown) + " more");
+      more.addEventListener("click", function () { othersShown += OTHER_PAGE; render(); });
+      otherMessage("", more);
+    }
+    var credit = el("li", "others-msg small");
+    credit.appendChild(document.createTextNode("Bar list from OpenStreetMap. Know one of their happy hours? "));
+    var tell = el("a", null, "Tell us");
+    tell.href = "https://github.com/sanj2888/Happy-Hour/issues/new?title=Happy%20hour%20suggestion";
+    tell.target = "_blank";
+    tell.rel = "noopener";
+    credit.appendChild(tell);
+    listEl.appendChild(credit);
   }
 
   function card(v, badge, distance) {
