@@ -69,6 +69,11 @@
     color: var(--text);
     font: 16px/1.45 Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
   }
+  /* Phones: no scroll bar down the side, like other apps. Computers keep theirs. */
+  @media (hover: none) and (pointer: coarse) {
+    html { scrollbar-width: none; }
+    html::-webkit-scrollbar { display: none; }
+  }
   .display { font-family: Unbounded, Inter, system-ui, sans-serif; letter-spacing: -.01em; }
 
   /* ---- Top banner ---- */
@@ -407,6 +412,12 @@
   .crawl-top { display: flex; justify-content: space-between; align-items: center; }
   .crawl h2 { margin: 0; font-size: 18px; }
   .crawl-q { margin: 10px 0 8px; font-size: 14px; font-weight: 700; }
+  .crawl-from-row { display: flex; gap: 8px; align-items: center; }
+  .crawl-from-row .search-box { flex: 1; min-width: 0; }
+  .crawl-input { padding: 10px 12px; font-size: 16px; }
+  .crawl-input:focus { outline: 2px solid var(--cyan); outline-offset: 1px; }
+  .crawl-from .suggest { border-color: var(--cyan); box-shadow: var(--glow-cyan), 0 16px 40px rgba(0, 0, 0, .6); }
+  .crawl-hint { margin: 6px 2px 0; color: var(--muted); font-size: 12.5px; }
   .crawl-msg { margin: 12px 0 0; color: var(--muted); font-size: 14px; }
   .crawl-stops { list-style: none; margin: 12px 0 0; padding: 0; counter-reset: stop; }
   .crawl-stops li { counter-increment: stop; }
@@ -749,6 +760,7 @@
     focus: null, // a searched place: { label, lat, lon }
     late: false, cheap: false,
     crawl: false, crawlStops: 3, // the bar crawl planner (open or not, and how many bars)
+    crawlFrom: null, // where the crawl starts: null (automatic), "me", or { label, lat, lon }
   };
   try {
     var saved = JSON.parse(localStorage.getItem(STORE) || "{}");
@@ -974,7 +986,7 @@
     var q = query.toLowerCase();
     var exact = venues.some(function (x) { return x.name.toLowerCase() === q; });
     if (exact) return v.name.toLowerCase() === q;
-    var text = (v.name + " " + v.area + " " + v.deal + (v.members ? " members club" : "")).toLowerCase();
+    var text = (v.name + " " + v.area + " " + v.deal + (v.members ? " members club" : "") + (v.group ? " " + v.group : "")).toLowerCase();
     return q.split(/\s+/).every(function (word) { return text.indexOf(word) >= 0; });
   }
 
@@ -1399,9 +1411,34 @@
     return q ? venues.filter(function (v) { return v.name.toLowerCase() === q; })[0] : null;
   }
 
+  // Where the crawl starts: the place picked in the crawl box (or "me"), else a searched bar or
+  // suburb, else you. With none of those it starts wherever the most bars are on.
+  function crawlStart() {
+    var f = state.crawlFrom, out;
+    if (f === "me") out = state.me ? { place: state.me, label: "where you are" } : { place: null, label: "where you are", waiting: true };
+    else if (f) out = { place: f, label: f.label };
+    else {
+      var bar = searchedBar(), o = origin();
+      out = bar ? { place: bar, label: bar.name } : o ? { place: o, label: state.focus ? state.focus.label : "where you are" } : { place: null, label: null };
+    }
+    if (out.place && nearestCity(out.place).d > FAR_AWAY_KM) out = { place: null, label: null, far: true };
+    return out;
+  }
+
+  // A rough "how good is the deal" score from 0 to 4: prices listed, a cheap price, more kinds of drinks.
+  function dealScore(v) {
+    var prices = (v.deal.match(/\$\s?\d+(\.\d+)?/g) || []).map(function (p) { return Number(p.replace(/[$\s]/g, "")); });
+    var score = prices.length ? 1 : 0;
+    if (prices.length && Math.min.apply(null, prices) <= 8) score += 1;
+    Object.keys(DRINKS).forEach(function (d) { if (DRINKS[d].test(v.deal)) score += 0.5; });
+    return score;
+  }
+
+  var DEAL_KM = 0.15; // each point of deal score is worth walking this much further
+
   function planCrawl(n, shuffle) {
-    var c = city(), from = searchedBar() || origin();
-    if (from && nearestCity(from).d > FAR_AWAY_KM) from = null;
+    var start = crawlStart(), from = start.place;
+    var c = from ? nearestCity(from).city : city();
     var pool = venues.filter(function (v) {
       if (v.city !== c || !passesFilters(v)) return false;
       if (state.savedOnly && !isSaved(v)) return false;
@@ -1424,11 +1461,13 @@
       });
       if (!options.length) break;
       if (at) {
-        options.sort(function (a, b) { return km(at, a) - km(at, b); });
+        // Best next bar: a short walk, with better deals worth a few extra steps.
+        var cost = function (v) { return km(at, v) - DEAL_KM * dealScore(v); };
+        options.sort(function (a, b) { return cost(a) - cost(b); });
       } else {
         // Nowhere to start from: begin where the most bars are on, so the walk stays short.
         var busy = function (v) { return pool.filter(function (o) { return km(v, o) <= HOP_KM && onAt(o, when + STOP_MINS); }).length; };
-        options.sort(function (a, b) { return busy(b) - busy(a); });
+        options.sort(function (a, b) { return busy(b) - busy(a) || dealScore(b) - dealScore(a); });
       }
       var pick = choose3(options, shuffle);
       stops.push({ v: pick, at: when, walk: at ? km(at, pick) : null });
@@ -1439,7 +1478,7 @@
 
   // Keeps the same plan between screen refreshes until something changes.
   function currentPlan() {
-    var from = origin();
+    var from = crawlStart().place;
     var k = [state.crawlStops, city(), from ? from.lat.toFixed(3) + "," + from.lon.toFixed(3) : "", state.drink, state.late,
       state.cheap, state.savedOnly, state.query, crawl.shuffle, Math.floor(Date.now() / 6e5)].join("|");
     if (crawl.key !== k) { crawl.key = k; crawl.plan = planCrawl(state.crawlStops, crawl.shuffle > 0); }
@@ -1468,6 +1507,95 @@
     return url;
   }
 
+  // "Start from": type a suburb, street or bar (or tap 📍 Me). Typing here doesn't redraw the
+  // list, so the box keeps its text; picking a place does.
+  function crawlFromBox() {
+    var wrap = el("div", "crawl-from");
+    wrap.appendChild(el("p", "crawl-q", "Start from"));
+    var row = el("div", "crawl-from-row");
+    var boxEl = el("div", "search-box");
+    var input = el("input", "search crawl-input");
+    input.type = "search";
+    input.placeholder = "Suburb, street or bar";
+    input.setAttribute("aria-label", "Where the bar crawl starts");
+    input.autocomplete = "off";
+    input.enterKeyHint = "go";
+    var current = crawlStart();
+    if (state.crawlFrom && state.crawlFrom !== "me") input.value = state.crawlFrom.label;
+    var list = el("ul", "suggest");
+    list.hidden = true;
+    boxEl.appendChild(input);
+    boxEl.appendChild(list);
+    row.appendChild(boxEl);
+    var me = el("button", "chip", "📍 Me");
+    me.type = "button";
+    me.setAttribute("aria-pressed", String(state.crawlFrom === "me"));
+    me.addEventListener("click", function () {
+      state.crawlFrom = "me";
+      if (!state.me) locate();
+      render();
+    });
+    row.appendChild(me);
+    wrap.appendChild(row);
+    if (!state.crawlFrom && current.place) {
+      wrap.appendChild(el("p", "crawl-hint", "Starting from " + current.label + ". Type above to change it."));
+    }
+
+    var pickPlace = function (place) {
+      state.crawlFrom = place;
+      crawl.shuffle = 0;
+      render();
+    };
+    var options = [];
+    var show = function () {
+      var q = input.value.trim().toLowerCase();
+      list.textContent = "";
+      options = [];
+      if (q) {
+        AREAS.filter(function (a) { return a.area.toLowerCase().indexOf(q) >= 0; }).slice(0, 3).forEach(function (a) {
+          options.push({ icon: "📍", name: a.area, sub: a.city, place: { label: a.area, lat: a.lat, lon: a.lon } });
+        });
+        venues.filter(function (v) { return v.name.toLowerCase().indexOf(q) >= 0; }).slice(0, 3).forEach(function (v) {
+          options.push({ icon: "🍸", name: v.name, sub: v.area, place: { label: v.name, lat: v.lat, lon: v.lon } });
+        });
+        if (q.length >= 3) options.push({ icon: "🧭", name: "Find \u201c" + input.value.trim() + "\u201d", sub: "Any street or place", lookup: input.value.trim() });
+      }
+      options.forEach(function (o) {
+        var li = el("li");
+        li.setAttribute("role", "option");
+        li.appendChild(el("span", "s-icon", o.icon));
+        var t = el("span", "s-text");
+        t.appendChild(el("span", "s-name", o.name));
+        t.appendChild(el("span", "s-sub", o.sub));
+        li.appendChild(t);
+        li.addEventListener("mousedown", function (e) { e.preventDefault(); use(o); });
+        list.appendChild(li);
+      });
+      list.hidden = !options.length;
+    };
+    var use = function (o) {
+      list.hidden = true;
+      input.blur();
+      if (o.place) { pickPlace(o.place); return; }
+      input.value = "Finding " + o.lookup + "…";
+      findPlace(o.lookup)
+        .then(function (place) {
+          if (place) pickPlace(place);
+          else { input.value = o.lookup; toast("Couldn't find that. Try a suburb."); }
+        })
+        .catch(function () { input.value = o.lookup; toast("Couldn't look that up (no signal?)"); });
+    };
+    input.addEventListener("input", show);
+    input.addEventListener("focus", show);
+    input.addEventListener("blur", function () { list.hidden = true; });
+    input.addEventListener("keydown", function (e) {
+      if (e.key !== "Enter") return;
+      e.preventDefault();
+      if (options.length) use(options[0]);
+    });
+    return wrap;
+  }
+
   function crawlBox() {
     var plan = currentPlan();
     var box = el("li", "crawl");
@@ -1479,6 +1607,7 @@
     top.appendChild(x);
     box.appendChild(top);
 
+    box.appendChild(crawlFromBox());
     box.appendChild(el("p", "crawl-q", "How many bars?"));
     var counts = el("div", "chips");
     [2, 3, 4, 5].forEach(function (n) {
@@ -1490,15 +1619,21 @@
     box.appendChild(counts);
 
     var stops = plan.stops;
-    var bar = searchedBar(), from = bar || origin();
-    var where = state.savedOnly ? "your saved spots" : bar ? bar.name : from ? (state.focus ? state.focus.label : "you") : city();
+    var start = crawlStart();
+    if (start.waiting) {
+      box.appendChild(el("p", "crawl-msg", locating ? "Finding where you are…"
+        : noteText ? noteText.replace("tap Near me again", "tap 📍 Me again") : "Turn on location to start from where you are."));
+      return box;
+    }
+    var where = start.label || (state.savedOnly ? "your saved spots" : city());
     if (!stops.length) {
       box.appendChild(el("p", "crawl-msg", "No happy hours left today near " + where +
-        ". Try another suburb, fewer filters, or the Plan ahead tab."));
+        ". Try another starting point, fewer filters, or the Plan ahead tab."));
       return box;
     }
     var intro = (plan.startIn === 0 ? "Starts now" : "Starts at " + arrival(stops[0].v, plan.startIn)) +
-      (from ? ", near " + where : " in " + (state.savedOnly ? where : "the busiest part of " + city())) + ".";
+      (start.place ? ", from " + where : " in " + (state.savedOnly ? "your saved spots" : "the busiest part of " + city())) +
+      (start.far ? " (that place is outside Sydney and Melbourne)" : "") + ". Short walks, best deals.";
     if (stops.length < state.crawlStops) {
       intro += " Only " + stops.length + (stops.length === 1 ? " bar" : " bars") + " in walking distance will still have happy hour on.";
     }
@@ -1800,7 +1935,7 @@
     var top = el("div", "top");
     var head = el("div");
     head.appendChild(el("h2", "name display", v.name));
-    head.appendChild(el("p", "where", "📍 " + v.area + (distance != null ? " · " + distanceText(distance) : "")));
+    head.appendChild(el("p", "where", "📍 " + v.area + (distance != null ? " · " + distanceText(distance) : "") + (v.group ? " · " + v.group : "")));
     top.appendChild(head);
     top.appendChild(el("span", "badge " + badge.kind + (badge.last ? " last" : ""), badge.label));
     li.appendChild(top);
@@ -2058,6 +2193,12 @@
         out.push({ icon: "📍", name: a.area, sub: a.city + " · " + a.n + (a.n === 1 ? " happy hour" : " happy hours") + " · and nearby",
           value: a.area, place: { label: a.area, lat: a.lat, lon: a.lon } });
       });
+    // Hospitality groups, e.g. typing "meri" offers all the Merivale venues.
+    var groups = {};
+    venues.forEach(function (v) { if (v.group && v.group.toLowerCase().indexOf(q) === 0) groups[v.group] = (groups[v.group] || 0) + 1; });
+    Object.keys(groups).forEach(function (g) {
+      out.push({ icon: "🏷️", name: "All " + g + " venues", sub: groups[g] + " happy hours", value: g, group: true });
+    });
     venues
       .filter(function (v) { return v.name.toLowerCase().indexOf(q) >= 0; })
       .sort(function (a, b) { return rank(a.name, a.city) - rank(b.name, b.city) || a.name.localeCompare(b.name); })
@@ -2091,16 +2232,25 @@
   }
 
   // Looks up any suburb or street on OpenStreetMap's free search (Nominatim).
-  function lookUp(text) {
-    setNote("Finding " + text + "…");
+  // Finds a place on OpenStreetMap's free search (Nominatim): resolves to { label, lat, lon } or null.
+  function findPlace(text) {
     var url = "https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=au&q=" + encodeURIComponent(text);
-    fetch(url, { headers: { "Accept-Language": "en" } })
+    return fetch(url, { headers: { "Accept-Language": "en" } })
       .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
       .then(function (list) {
-        if (!list.length) { setNote("Couldn't find \u201c" + text + "\u201d. Try a suburb name."); return; }
+        if (!list.length) return null;
         var label = text.replace(/\b\w/g, function (c) { return c.toUpperCase(); });
-        searchEl.value = label; typed = label;
-        focusOn({ label: label, lat: Number(list[0].lat), lon: Number(list[0].lon) });
+        return { label: label, lat: Number(list[0].lat), lon: Number(list[0].lon) };
+      });
+  }
+
+  function lookUp(text) {
+    setNote("Finding " + text + "…");
+    findPlace(text)
+      .then(function (place) {
+        if (!place) { setNote("Couldn't find \u201c" + text + "\u201d. Try a suburb name."); return; }
+        searchEl.value = place.label; typed = place.label;
+        focusOn(place);
       })
       .catch(function () { setNote("Couldn't look that up just now (no signal?). Try a suburb from the list."); });
   }
@@ -2153,6 +2303,7 @@
     }
     state.focus = null;
     state.query = sg.value;
+    if (sg.group) { state.when = "all"; save(); render(); return; }
     // A bar may not be on right now, so show its whole week, in its own city.
     if (sg.bar) {
       state.when = "all";
@@ -2278,7 +2429,9 @@
   var sharedBar = venues.filter(function (v) {
     return v.name === params.get("bar") && (!params.get("city") || v.city === params.get("city"));
   })[0];
-  if (params.has("bar")) history.replaceState(null, "", location.pathname);
+  // A shared app link (?get=app) opens the "Save as an app" steps for whoever opens it.
+  var openGuide = params.get("get") === "app";
+  if (params.has("bar") || params.has("get")) history.replaceState(null, "", location.pathname);
   if (sharedBar) {
     state.tab = "now";
     suggestions = [{ value: sharedBar.name, bar: sharedBar }];
@@ -2290,15 +2443,18 @@
 
   var APP_URL = location.origin + location.pathname;
 
+  // The link opens the app with the "Save as an app" steps already showing.
   function shareApp() {
-    var text = "🍻 Cheap drinks near you, right now. Happy hours in Sydney & Melbourne:";
+    var url = APP_URL + "?get=app";
+    var text = "🍻 Cheap drinks near you, right now. Happy hours in Sydney & Melbourne. " +
+      "Open the link and it shows you how to add it to your home screen in 10 seconds:";
     if (navigator.share) {
-      navigator.share({ title: "Happy Hour", text: text, url: APP_URL }).catch(function () {});
+      navigator.share({ title: "Happy Hour", text: text, url: url }).catch(function () {});
     } else if (navigator.clipboard) {
-      navigator.clipboard.writeText(APP_URL).then(function () { toast("Link copied 📋 Paste it to your friends"); },
-        function () { window.open("https://wa.me/?text=" + encodeURIComponent(text + " " + APP_URL), "_blank", "noopener"); });
+      navigator.clipboard.writeText(url).then(function () { toast("Link copied 📋 Paste it to your friends"); },
+        function () { window.open("https://wa.me/?text=" + encodeURIComponent(text + " " + url), "_blank", "noopener"); });
     } else {
-      window.open("https://wa.me/?text=" + encodeURIComponent(text + " " + APP_URL), "_blank", "noopener");
+      window.open("https://wa.me/?text=" + encodeURIComponent(text + " " + url), "_blank", "noopener");
     }
   }
   document.querySelectorAll("[data-share-app]").forEach(function (b) { b.addEventListener("click", shareApp); });
@@ -2313,11 +2469,17 @@
   document.querySelectorAll("[data-phone]").forEach(function (b) {
     b.addEventListener("click", function () { showPhone(b.dataset.phone); });
   });
+  function openSheet() {
+    if (sheet.open) return;
+    showPhone(/Android/i.test(navigator.userAgent) ? "android" : "iphone");
+    document.getElementById("install-now").hidden = !installPrompt;
+    if (sheet.showModal) sheet.showModal(); else sheet.setAttribute("open", "");
+  }
   document.querySelectorAll("[data-get-app]").forEach(function (b) {
     b.addEventListener("click", function () {
-      showPhone(/Android/i.test(navigator.userAgent) ? "android" : "iphone");
-      document.getElementById("install-now").hidden = !installPrompt;
-      if (sheet.showModal) sheet.showModal(); else sheet.setAttribute("open", "");
+      // On Android with one-tap install ready, the tip's button installs straight away.
+      if (installPrompt && b.closest("#install")) { installNow(); return; }
+      openSheet();
     });
   });
   sheet.querySelector("[data-close]").addEventListener("click", function () { sheet.close ? sheet.close() : sheet.removeAttribute("open"); });
@@ -2339,16 +2501,22 @@
   window.addEventListener("beforeinstallprompt", function (e) {
     e.preventDefault();
     installPrompt = e;
+    document.getElementById("install-now").hidden = false;
+    installBox.querySelector("[data-get-app]").textContent = "Install";
     if (!installHidden()) installBox.hidden = false;
   });
-  document.getElementById("install-now").addEventListener("click", function () {
+  // Opened from a shared app link on a phone: show the steps straight away.
+  if (openGuide && !installed && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) setTimeout(openSheet, 1200);
+
+  function installNow() {
     if (!installPrompt) return;
     installPrompt.prompt();
     installPrompt.userChoice.then(function (c) {
-      if (c.outcome === "accepted") { installBox.hidden = true; sheet.close(); }
+      if (c.outcome === "accepted") { installBox.hidden = true; if (sheet.open) sheet.close(); }
     });
     installPrompt = null;
-  });
+  }
+  document.getElementById("install-now").addEventListener("click", installNow);
   document.getElementById("install-x").addEventListener("click", function () {
     installBox.hidden = true;
     try { localStorage.setItem(INSTALL_STORE, "1"); } catch (e) {}
@@ -2362,7 +2530,7 @@
   // Keep "On now" and "Starts in" up to date while the page is open.
   setInterval(function () {
     // Don't redraw while a bar is highlighted or a map pin is open.
-    if (!document.querySelector(".card.picked, .leaflet-popup")) render();
+    if (!document.querySelector(".card.picked, .leaflet-popup") && document.activeElement.className.indexOf("crawl-input") < 0) render();
   }, 60000);
 })();
 </script>

@@ -8,6 +8,7 @@
 //     lat: -33.88, lon: 151.20,      // roughly where it is (right-click the spot in Google Maps to copy these)
 //     deal: "What's on offer",
 //     members: true,                  // only if the deal is for club members (leave this line out otherwise)
+//     group: "Merivale",              // the hospitality group that runs it, if known (leave out otherwise)
 //     hours: [{ days: "Mon-Fri", from: "16:00", to: "18:00" }],
 //     source: "https://where the details came from",
 //     checked: "2026-10-23",          // the date someone last checked the details
@@ -516,6 +517,7 @@ window.VENUES = [
     lat: -33.9205, lon: 151.2575,
     deal: "Discounted beers, spirits, wine and spritzes",
     hours: [{ days: "Mon-Fri", from: "17:00", to: "19:00" }],
+    group: "Merivale",
     source: "https://merivale.com/whatson/happy-hour-at-merivale/",
     checked: "2026-10-23",
   },
@@ -1000,6 +1002,7 @@ window.VENUES = [
     lat: -33.9130, lon: 151.2410,
     deal: "$8 schooners, $10.50 pints, $8 house spirits and wine, $16 Aperol spritz, $19 cocktails",
     hours: [{ days: "Mon-Fri", from: "16:00", to: "18:00" }],
+    group: "Merivale",
     source: "https://merivale.com/venues/the-dog/",
     checked: "2026-10-23",
   },
@@ -1111,6 +1114,7 @@ window.VENUES = [
     lat: -33.8645, lon: 151.2075,
     deal: "$8 schooners and house wine and spirits, $10.50 pints, $16 Aperol spritz, $19 cocktails",
     hours: [{ days: "Mon-Fri", from: "17:00", to: "19:00" }],
+    group: "Merivale",
     source: "https://merivale.com/venues/establishmentbar/",
     checked: "2026-10-23",
   },
@@ -1121,6 +1125,7 @@ window.VENUES = [
     lat: -33.8676, lon: 151.2063,
     deal: "Cheap schooners, pints, spirits, wine, Aperol spritz and cocktails",
     hours: [{ days: "Mon-Fri", from: "16:00", to: "18:00" }],
+    group: "Merivale",
     source: "https://merivale.com/venues/hotelcbd/",
     checked: "2026-10-23",
   },
@@ -1562,6 +1567,7 @@ window.VENUES = [
     lat: -33.6560, lon: 151.3180,
     deal: "$8 schooners, $10.50 pints, $8 spirits, $8 wine",
     hours: [{ days: "Mon-Fri", from: "16:00", to: "18:00" }],
+    group: "Merivale",
     source: "https://merivale.com/whatson/happy-hour-at-merivale/",
     checked: "2026-10-23",
   },
