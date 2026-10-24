@@ -164,6 +164,14 @@
   .seg.seg-full { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 10px; }
   .seg.seg-full button { padding: 10px 4px; font-size: 14px; white-space: nowrap; }
   .seg-full + .chips { margin-top: 10px; }
+  .seg.seg-show { grid-template-columns: 1fr 1fr; }
+  .seg.seg-show button[aria-pressed="true"] { background: var(--sunset); color: #1a0b2e; box-shadow: var(--glow-pink); }
+  .seg-full + .seg-full { margin-top: 8px; }
+  .hh-kicker {
+    display: inline-block; margin-top: 10px; padding: 2px 9px; border-radius: 999px;
+    background: rgba(255, 138, 31, .14); color: var(--orange); font-size: 12px; font-weight: 800;
+  }
+  .hh-kicker + .deal { margin-top: 6px; }
   .chips.filters { gap: 6px; }
   .chips.filters .chip { padding: 6px 10px; font-size: 13px; }
   /* Filter tiles: emoji on top, word underneath, four to a row on every phone. */
@@ -624,12 +632,16 @@
       <button class="chip" data-place="Sydney" aria-pressed="false">Sydney</button>
       <button class="chip" data-place="Melbourne" aria-pressed="false">Melbourne</button>
     </div>
-    <div class="seg seg-full" role="group" aria-label="When">
+    <div class="seg seg-full seg-show" role="group" aria-label="Show">
+      <button type="button" data-show="all" aria-pressed="false">🍺 All pubs &amp; bars</button>
+      <button type="button" data-show="hh" aria-pressed="false">🔥 Happy hours</button>
+    </div>
+    <div class="seg seg-full" id="when-seg" role="group" aria-label="When">
       <button type="button" data-when="now" aria-pressed="false">🔥 On now</button>
       <button type="button" data-when="today" aria-pressed="false">Today</button>
       <button type="button" data-when="all" aria-pressed="false">All week</button>
     </div>
-    <div class="tiles" role="group" aria-label="Filters">
+    <div class="tiles" id="now-tiles" role="group" aria-label="Filters">
       <button class="chip tile" type="button" data-drink="beer" aria-pressed="false"><span aria-hidden="true">🍺</span>Beer</button>
       <button class="chip tile" type="button" data-drink="wine" aria-pressed="false"><span aria-hidden="true">🍷</span>Wine</button>
       <button class="chip tile" type="button" data-drink="cocktails" aria-pressed="false"><span aria-hidden="true">🍸</span>Cocktails</button>
@@ -688,6 +700,7 @@
       <span><i style="--c: var(--orange)"></i>Last call</span>
       <span><i style="--c: var(--soon)"></i>Later today</span>
       <span><i style="--c: var(--purple)"></i>Another day</span>
+      <span id="key-pub"><i style="--c: #8f84a3"></i>Other pubs &amp; bars</span>
     </div>
   </div>
   <ul class="list" id="list"></ul>
@@ -767,10 +780,11 @@
     late: false, cheap: false,
     crawl: false, crawlStops: 3, // the bar crawl planner (open or not, and how many bars)
     crawlFrom: null, // where the crawl starts: null (automatic), "me", or { label, lat, lon }
+    show: "all", // Right now and Map: "all" pubs and bars (happy hours marked 🔥), or "hh" happy hours only
   };
   try {
     var saved = JSON.parse(localStorage.getItem(STORE) || "{}");
-    ["tab", "place", "when", "planCity", "area", "day"].forEach(function (k) { if (saved[k]) state[k] = saved[k]; });
+    ["tab", "place", "when", "planCity", "area", "day", "show"].forEach(function (k) { if (saved[k]) state[k] = saved[k]; });
   } catch (e) {}
 
   // ----- Reading the hours -----
@@ -934,7 +948,7 @@
   function save() {
     try {
       localStorage.setItem(STORE, JSON.stringify({
-        tab: state.tab, place: state.place, when: state.when, planCity: state.planCity, area: state.area, day: state.day,
+        tab: state.tab, place: state.place, when: state.when, planCity: state.planCity, area: state.area, day: state.day, show: state.show,
       }));
     } catch (e) {}
   }
@@ -1008,8 +1022,13 @@
     var filtering = !!(state.drink || state.late || state.cheap || (state.tab !== "plan" && state.savedOnly));
     document.querySelectorAll("[data-clear]").forEach(function (b) { b.hidden = !filtering; });
     document.querySelectorAll("[data-cheap]").forEach(function (b) { b.setAttribute("aria-pressed", String(state.cheap)); });
+    document.querySelectorAll("[data-show]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.show === state.show)); });
+    var all = state.show === "all";
+    document.getElementById("when-seg").hidden = all;
+    document.getElementById("key-pub").hidden = !all;
+    document.getElementById("now-tiles").hidden = all;
     document.getElementById("now-panel").hidden = state.tab === "plan";
-    document.getElementById("surprise").hidden = state.tab === "plan";
+    document.getElementById("surprise").hidden = state.tab === "plan" || all;
     document.getElementById("crawl-btn").hidden = state.tab !== "now";
     document.getElementById("crawl-btn").setAttribute("aria-pressed", String(state.crawl));
     document.getElementById("plan-panel").hidden = state.tab !== "plan";
@@ -1263,8 +1282,7 @@
   // ----- Right now -----
 
   function renderNow() {
-    renderHappyHours();
-    renderOtherBars();
+    if (state.show === "all") renderAllBars(); else renderHappyHours();
   }
 
   function markNowButtons() {
@@ -1727,7 +1745,7 @@
   var LEAFLET = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/";
   var CLUSTER = "https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/";
   var leaflet = { status: "idle", map: null, layer: null, me: null, viewKey: null, markers: {} };
-  var PIN_COLOURS = { on: "#3df2a5", last: "#ff8a1f", soon: "#ffc14d", off: "#b48cff" };
+  var PIN_COLOURS = { on: "#3df2a5", last: "#ff8a1f", soon: "#ffc14d", off: "#b48cff", pub: "#8f84a3" };
 
   function loadLeaflet() {
     if (leaflet.status !== "idle") return;
@@ -1779,10 +1797,30 @@
     return box;
   }
 
+  // Popup for a pub or bar from OpenStreetMap.
+  function pubPopup(o) {
+    var box = el("div", "pop");
+    box.appendChild(el("h3", "pop-name", o.name));
+    box.appendChild(el("p", "hours", OTHER_TYPES[o.type] || "🍸 Bar"));
+    if (o.happy) box.appendChild(el("p", "deal", "🔥 Happy hour: " + readableHours(o.happy)));
+    if (o.hours) box.appendChild(el("p", "hours", "🕓 Open " + readableHours(o.hours)));
+    var go = el("a", "go", "Take me there →");
+    go.href = otherLink(o);
+    go.target = "_blank";
+    go.rel = "noopener";
+    box.appendChild(go);
+    return box;
+  }
+
   function renderMap() {
     markNowButtons();
     listEl.textContent = "";
-    var rows = nowRows();
+    // All pubs & bars: everything within 2 km of the place (grey pins for pubs without a happy hour).
+    var all = state.show === "all", center = all ? allCenter() : null;
+    if (center) loadOthers(center);
+    var mixed = all ? (center ? allRows(center) : []) : nowRows();
+    var rows = mixed.filter(function (r) { return r.v; });
+    var pubs = mixed.filter(function (r) { return r.o; });
     shown = rows;
     loadLeaflet();
     if (leaflet.status !== "ready") setCount(null);
@@ -1817,34 +1855,51 @@
       pin.addTo(leaflet.layer);
       leaflet.markers[key(r.v)] = pin;
     });
-    var from = origin();
-    var near = from && nearestCity(from).d <= FAR_AWAY_KM;
+    pubs.forEach(function (r) {
+      L.circleMarker([r.o.lat, r.o.lon], {
+        radius: 6, color: PIN_COLOURS.pub, fillColor: PIN_COLOURS.pub, fillOpacity: 0.55, weight: 1.5, className: "pin", kind: "pub",
+      }).bindPopup(pubPopup(r.o)).addTo(leaflet.layer);
+    });
+    var from = all ? (state.place === "near" || state.focus ? center : null) : origin();
+    var near = from && (all || nearestCity(from).d <= FAR_AWAY_KM);
     if (near) {
       L.circleMarker([from.lat, from.lon], {
         radius: 8, color: "#ffffff", weight: 3, fillColor: state.focus ? "#ff4fd8" : "#2de2ff", fillOpacity: 1, className: "pin",
       }).bindTooltip(state.focus ? state.focus.label : "You're here").addTo(leaflet.me);
     }
     // Only move the map when the place changes, so it doesn't jump while you look around.
-    var viewKey = near ? (state.focus ? "focus:" + state.focus.label : "me") : c;
+    var viewKey = all ? (center ? "all:" + center.lat.toFixed(3) + "," + center.lon.toFixed(3) : "all") :
+      near ? (state.focus ? "focus:" + state.focus.label : "me") : c;
     if (leaflet.viewKey !== viewKey) {
       leaflet.viewKey = viewKey;
-      if (near) map.setView([from.lat, from.lon], 14);
+      if (all && center) map.setView([center.lat, center.lon], 15);
+      else if (near) map.setView([from.lat, from.lon], 14);
       else if (rows.length) map.fitBounds(rows.map(function (r) { return [r.v.lat, r.v.lon]; }), { padding: [30, 30], maxZoom: 14 });
       else map.setView([CITIES[c].lat, CITIES[c].lon], 12);
+    }
+    if (all) {
+      setCount(center ? mixed.length : null, mixed.length === 1 ? "pub or bar" : "pubs & bars");
+      if (center) setNote(others.status === "loading" ? "Finding every pub and bar nearby…" :
+        "Tap a pin. Coloured pins have happy hours (" + rows.length + "), grey pins are other pubs and bars.");
+      return;
     }
     setCount(rows.length || null);
     setNote(rows.length ? "Tap a pin for the deal." :
       "No happy hours match in " + c + (state.when === "now" ? " right now. Try Today or All week." : "."));
   }
 
-  // ----- Other bars & pubs nearby (from OpenStreetMap, free) -----
-  // Shown under the happy hours when Near me is on, for when you want a drink regardless.
+  // ----- All pubs & bars (from OpenStreetMap, free, no key) -----
+  // Every bar, pub, nightclub and beer garden around a place, mixed in with our happy hours
+  // (marked 🔥), closest first. Works anywhere, not just Sydney and Melbourne.
 
   var OTHER_RADIUS_M = 2000;
-  var OTHER_PAGE = 15;
+  var ALL_KM = OTHER_RADIUS_M / 1000;
+  var ALL_PAGE = 25;
   var OTHER_TYPES = { bar: "🍸 Bar", pub: "🍺 Pub", nightclub: "🪩 Nightclub", biergarten: "🌳 Beer garden" };
+  // Free public Overpass servers; the second is tried if the first is busy.
+  var OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
   var others = { key: null, status: "idle", list: [] };
-  var othersShown = OTHER_PAGE;
+  var allShown = ALL_PAGE, allKey = null;
 
   function plainName(name) { return name.toLowerCase().replace(/^the\s+/, "").replace(/[^a-z0-9]+/g, ""); }
 
@@ -1854,45 +1909,69 @@
     return venues.some(function (v) { return plainName(v.name) === n && km(v, place) < 1.5; });
   }
 
-  function loadOthers() {
-    var k = state.me.lat.toFixed(3) + "," + state.me.lon.toFixed(3);
+  // Where "All pubs & bars" looks: a searched place, you (Near me), or the middle of the chosen city.
+  function allCenter() {
+    if (state.focus) return { lat: state.focus.lat, lon: state.focus.lon };
+    if (state.place === "near") return state.me;
+    return CITIES[state.place];
+  }
+
+  function loadOthers(center) {
+    var k = center.lat.toFixed(3) + "," + center.lon.toFixed(3);
     if (others.key === k) return;
     others = { key: k, status: "loading", list: [] };
-    othersShown = OTHER_PAGE;
     try {
-      var cached = sessionStorage.getItem("happy-hour-osm:" + k);
+      var cached = sessionStorage.getItem("happy-hour-osm2:" + k);
       if (cached) { others.list = JSON.parse(cached); others.status = "ready"; return; }
     } catch (e) {}
-    var query = '[out:json][timeout:20];nwr["amenity"~"^(bar|pub|nightclub|biergarten)$"](around:' +
-      OTHER_RADIUS_M + "," + state.me.lat + "," + state.me.lon + ");out center tags 100;";
-    fetch("https://overpass-api.de/api/interpreter", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: "data=" + encodeURIComponent(query),
-    })
-      .then(function (res) { return res.ok ? res.json() : Promise.reject(res.status); })
-      .then(function (data) {
-        if (others.key !== k) return;
-        others.list = (data.elements || [])
-          .map(function (e) {
-            var t = e.tags || {};
-            return {
-              name: t.name, type: t.amenity,
-              lat: e.lat != null ? e.lat : e.center && e.center.lat,
-              lon: e.lon != null ? e.lon : e.center && e.center.lon,
-              hours: t.opening_hours || "", happy: t.happy_hours || "",
-            };
-          })
-          .filter(function (o) { return o.name && o.lat != null && !isListed(o); });
-        others.status = "ready";
-        try { sessionStorage.setItem("happy-hour-osm:" + k, JSON.stringify(others.list)); } catch (e) {}
-        render();
+    var query = '[out:json][timeout:25];nwr["amenity"~"^(bar|pub|nightclub|biergarten)$"](around:' +
+      OTHER_RADIUS_M + "," + center.lat + "," + center.lon + ");out center tags 400;";
+    var ask = function (i) {
+      fetch(OVERPASS[i], {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: "data=" + encodeURIComponent(query),
       })
-      .catch(function () {
-        if (others.key !== k) return;
-        others.status = "error";
-        render();
-      });
+        .then(function (res) { return res.ok ? res.json() : Promise.reject(res.status); })
+        .then(function (data) {
+          if (others.key !== k) return;
+          others.list = (data.elements || [])
+            .map(function (e) {
+              var t = e.tags || {};
+              return {
+                name: t.name, type: t.amenity,
+                lat: e.lat != null ? e.lat : e.center && e.center.lat,
+                lon: e.lon != null ? e.lon : e.center && e.center.lon,
+                hours: t.opening_hours || "", happy: t.happy_hours || "",
+                street: [t["addr:housenumber"], t["addr:street"]].filter(Boolean).join(" "),
+                suburb: t["addr:suburb"] || t["addr:city"] || "",
+              };
+            })
+            .filter(function (o) { return o.name && o.lat != null && !isListed(o); });
+          others.status = "ready";
+          try { sessionStorage.setItem("happy-hour-osm2:" + k, JSON.stringify(others.list)); } catch (e) {}
+          render();
+        })
+        .catch(function () {
+          if (others.key !== k) return;
+          if (i + 1 < OVERPASS.length) { ask(i + 1); return; }
+          others.status = "error";
+          render();
+        });
+    };
+    ask(0);
+  }
+
+  // Our venues ({ v, s, d }) and OpenStreetMap's ({ o, d }) within 2 km, closest first.
+  function allRows(center) {
+    var q = state.query.toLowerCase();
+    var ours = venues
+      .map(function (v) { return { v: v, s: status(v), d: km(center, v) }; })
+      .filter(function (r) { return r.d <= ALL_KM && (!q || matches(r.v, state.query)); });
+    var osm = others.list
+      .map(function (o) { return { o: o, d: km(center, o) }; })
+      .filter(function (r) { return r.d <= ALL_KM && (!q || r.o.name.toLowerCase().indexOf(q) >= 0); });
+    return ours.concat(osm).sort(function (a, b) { return a.d - b.d; });
   }
 
   // Makes OpenStreetMap times readable: "Mo-Fr 17:00-19:00" becomes "Mon–Fri 5 pm to 7 pm".
@@ -1913,15 +1992,24 @@
     return d.toFixed(1) + " km away";
   }
 
+  // Google Maps by name and address when OpenStreetMap has the street, otherwise the exact spot.
+  function otherLink(o) {
+    var q = o.street ? [o.name, o.street, o.suburb].filter(Boolean).join(", ") : o.lat.toFixed(5) + "," + o.lon.toFixed(5);
+    return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(q);
+  }
+
   function otherCard(o, d) {
     var li = el("li", "card mini");
     li.appendChild(el("h3", "name display", o.name));
     li.appendChild(el("p", "where", (OTHER_TYPES[o.type] || "🍸 Bar") + " · " + otherDistance(d)));
-    if (o.happy) li.appendChild(el("p", "deal", "Happy hour: " + readableHours(o.happy)));
+    if (o.happy) {
+      li.appendChild(el("span", "hh-kicker", "🔥 Happy hour"));
+      li.appendChild(el("p", "deal", readableHours(o.happy)));
+    }
     if (o.hours) li.appendChild(el("p", "hours", "🕓 Open " + readableHours(o.hours)));
     var actions = el("div", "actions");
     var dir = el("a", "go", "Take me there →");
-    dir.href = "https://www.google.com/maps/search/?api=1&query=" + o.lat + "," + o.lon;
+    dir.href = otherLink(o);
     dir.target = "_blank";
     dir.rel = "noopener";
     actions.appendChild(dir);
@@ -1935,44 +2023,60 @@
     listEl.appendChild(li);
   }
 
-  function renderOtherBars() {
-    if (state.place !== "near" || !state.me || state.savedOnly || state.drink || state.late || state.cheap) return;
-    loadOthers();
-    var head = el("li", "area-head others-head", "Other bars & pubs nearby");
-    head.appendChild(el("span", null, "Not in our happy hour list"));
-    listEl.appendChild(head);
+  function renderAllBars() {
+    markNowButtons();
+    listEl.textContent = "";
+    shown = [];
+    if (state.crawl) listEl.appendChild(crawlBox());
+    var center = allCenter();
+    if (!center) { setCount(null); return; } // the note says it's finding you, or how to allow location
+    loadOthers(center);
+    var rows = allRows(center);
+    var k = others.key + "|" + state.query;
+    if (k !== allKey) { allKey = k; allShown = ALL_PAGE; }
+    shown = rows.filter(function (r) { return r.v; });
+    var hh = rows.filter(function (r) { return r.v || r.o.happy; }).length;
+    setCount(rows.length, rows.length === 1 ? "pub or bar" : "pubs & bars");
+    if (hh) setNote(noteEl.textContent.replace(" 🔥 = happy hour.", " " + hh + " with happy hours 🔥"));
 
-    if (others.status === "loading") return otherMessage("Looking for bars near you…");
+    if (others.status === "loading") otherMessage("Finding every pub and bar nearby…");
     if (others.status === "error") {
       var retry = el("button", "chip", "Try again");
       retry.addEventListener("click", function () { others.key = null; render(); });
-      return otherMessage("Couldn't load other bars just now. ", retry);
+      otherMessage("Couldn't load every pub just now (busy or no signal). ", retry);
     }
-    var q = state.query.toLowerCase();
-    var list = others.list
-      .filter(function (o) { return !q || o.name.toLowerCase().indexOf(q) >= 0; })
-      .map(function (o) { return { o: o, d: km(state.me, o) }; })
-      // Any with a happy hour on the map go first, then closest first.
-      .sort(function (a, b) { return (b.o.happy ? 1 : 0) - (a.o.happy ? 1 : 0) || a.d - b.d; });
-    if (!list.length) return otherMessage(q ? "No other bars match \u201c" + state.query + "\u201d." : "No other bars found within 2 km.");
-
-    list.slice(0, othersShown).forEach(function (r) { listEl.appendChild(otherCard(r.o, r.d)); });
-    if (list.length > othersShown) {
-      var more = el("button", "chip", "Show " + Math.min(OTHER_PAGE, list.length - othersShown) + " more");
-      more.addEventListener("click", function () { othersShown += OTHER_PAGE; render(); });
+    if (!rows.length && others.status === "ready") {
+      var empty = el("li", "empty");
+      empty.appendChild(el("div", "big", "🔍"));
+      empty.appendChild(el("h2", "display", "No pubs found"));
+      empty.appendChild(el("p", null, state.query
+        ? "Nothing called “" + state.query + "” within 2 km."
+        : "No pubs or bars on the map within 2 km. Try searching a nearby suburb."));
+      listEl.appendChild(empty);
+      return;
+    }
+    rows.slice(0, allShown).forEach(function (r) {
+      listEl.appendChild(r.v ? card(r.v, r.s, r.d, true) : otherCard(r.o, r.d));
+    });
+    if (rows.length > allShown) {
+      var more = el("button", "chip", "Show " + Math.min(ALL_PAGE, rows.length - allShown) + " more");
+      more.addEventListener("click", function () { allShown += ALL_PAGE; render(); });
       otherMessage("", more);
     }
-    var credit = el("li", "others-msg small");
-    credit.appendChild(document.createTextNode("Bar list from OpenStreetMap. Know one of their happy hours? "));
-    var tell = el("a", null, "Tell us");
-    tell.href = "https://github.com/sanj2888/Happy-Hour/issues/new?title=Happy%20hour%20suggestion";
-    tell.target = "_blank";
-    tell.rel = "noopener";
-    credit.appendChild(tell);
-    listEl.appendChild(credit);
+    if (others.status === "ready") {
+      var credit = el("li", "others-msg small");
+      credit.appendChild(document.createTextNode("Pubs and bars from OpenStreetMap, within 2 km. Know a happy hour we're missing? "));
+      var tell = el("a", null, "Tell us");
+      tell.href = "https://github.com/sanj2888/Happy-Hour/issues/new?title=Happy%20hour%20suggestion";
+      tell.target = "_blank";
+      tell.rel = "noopener";
+      credit.appendChild(tell);
+      listEl.appendChild(credit);
+    }
   }
 
-  function card(v, badge, distance) {
+  // kicker: label the card "🔥 Happy hour" (used in the All pubs & bars list).
+  function card(v, badge, distance, kicker) {
     var li = el("li", "card");
     li.dataset.key = key(v);
     var top = el("div", "top");
@@ -1982,6 +2086,7 @@
     top.appendChild(head);
     top.appendChild(el("span", "badge " + badge.kind + (badge.last ? " last" : ""), badge.label));
     li.appendChild(top);
+    if (kicker) li.appendChild(el("span", "hh-kicker", "🔥 Happy hour"));
     li.appendChild(el("p", "deal", v.deal));
     if (v.members) li.appendChild(el("span", "members", "🎟️ Members only"));
     li.appendChild(el("p", "hours", "🕓 " + hoursText(v)));
@@ -2020,16 +2125,23 @@
   function setNote(text) { noteEl.textContent = text || ""; }
 
   // The big number above the list, e.g. "134 on now".
-  function setCount(n) {
+  function setCount(n, words) {
     var c = document.getElementById("count");
     c.hidden = n == null;
     if (n == null) return;
     c.textContent = "";
     c.appendChild(el("span", null, String(n)));
-    c.appendChild(document.createTextNode(" " + (state.when === "now" ? "on now" : state.when === "today" ? "today" : "this week")));
+    c.appendChild(document.createTextNode(" " + (words || (state.when === "now" ? "on now" : state.when === "today" ? "today" : "this week"))));
   }
 
   function placeNote() {
+    if (state.show === "all" && state.tab !== "plan") {
+      if (state.focus) setNote("Around " + state.focus.label + ", closest first. 🔥 = happy hour.");
+      else if (state.place !== "near") setNote("Around the middle of " + state.place + ". Tap Near me or search a suburb to look somewhere else.");
+      else if (!state.me) setNote(locating ? "Finding where you are…" : noteText);
+      else setNote("Near you, closest first. 🔥 = happy hour.");
+      return;
+    }
     if (state.focus) {
       var nc = nearestCity(state.focus);
       setNote(nc.d > FAR_AWAY_KM
@@ -2120,6 +2232,13 @@
     });
   });
   document.getElementById("surprise").addEventListener("click", surprise);
+  document.querySelectorAll("[data-show]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      state.show = b.dataset.show;
+      save();
+      render();
+    });
+  });
   document.getElementById("crawl-btn").addEventListener("click", function () {
     state.crawl = !state.crawl;
     crawl.shuffle = 0;
@@ -2444,6 +2563,11 @@
       bits.unshift(planCount + (planCount === 1 ? " spot" : " spots"));
     } else {
       bits.push(state.focus ? "📍 " + state.focus.label : state.place === "near" ? "📍 Near me" : state.place);
+      if (state.show === "all") {
+        bits.unshift(document.getElementById("count").textContent || "Pubs & bars");
+        if (state.query) bits.push("\u201c" + state.query + "\u201d");
+        return bits.join(" · ");
+      }
       bits.push({ now: "🔥 On now", today: "Today", all: "All week" }[state.when]);
       if (state.savedOnly) bits.push("❤️ Saved");
       if (state.drink) bits.push(state.drink[0].toUpperCase() + state.drink.slice(1));
