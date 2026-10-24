@@ -1815,7 +1815,7 @@
   function renderMap() {
     markNowButtons();
     listEl.textContent = "";
-    // All pubs & bars: everything within 2 km of the place (grey pins for pubs without a happy hour).
+    // All pubs & bars: everything within the search radius (grey pins for pubs without a happy hour).
     var all = state.show === "all", center = all ? allCenter() : null;
     if (center) loadOthers(center);
     var mixed = all ? (center ? allRows(center) : []) : nowRows();
@@ -1868,11 +1868,11 @@
       }).bindTooltip(state.focus ? state.focus.label : "You're here").addTo(leaflet.me);
     }
     // Only move the map when the place changes, so it doesn't jump while you look around.
-    var viewKey = all ? (center ? "all:" + center.lat.toFixed(3) + "," + center.lon.toFixed(3) : "all") :
+    var viewKey = all ? (center ? "all:" + center.lat.toFixed(3) + "," + center.lon.toFixed(3) + ":" + others.radius : "all") :
       near ? (state.focus ? "focus:" + state.focus.label : "me") : c;
     if (leaflet.viewKey !== viewKey) {
       leaflet.viewKey = viewKey;
-      if (all && center) map.setView([center.lat, center.lon], 15);
+      if (all && center) map.setView([center.lat, center.lon], others.radius > 5000 ? 12 : others.radius > 2000 ? 13 : 15);
       else if (near) map.setView([from.lat, from.lon], 14);
       else if (rows.length) map.fitBounds(rows.map(function (r) { return [r.v.lat, r.v.lon]; }), { padding: [30, 30], maxZoom: 14 });
       else map.setView([CITIES[c].lat, CITIES[c].lon], 12);
@@ -1892,8 +1892,8 @@
   // Every bar, pub, nightclub and beer garden around a place, mixed in with our happy hours
   // (marked 🔥), closest first. Works anywhere, not just Sydney and Melbourne.
 
-  var OTHER_RADIUS_M = 2000;
-  var ALL_KM = OTHER_RADIUS_M / 1000;
+  var RADII = [2000, 5000, 10000]; // metres
+  var ENOUGH = 8;
   var ALL_PAGE = 25;
   var BOOST_KM = 0.4; // about a 5-minute walk
   var OTHER_TYPES = { bar: "🍸 Bar", pub: "🍺 Pub", nightclub: "🪩 Nightclub", biergarten: "🌳 Beer garden" };
@@ -1917,17 +1917,18 @@
     return CITIES[state.place];
   }
 
+  // Looks within 2 km first; in spread-out suburbs with fewer than ENOUGH pubs, widens to 5 km, then 10 km.
   function loadOthers(center) {
     var k = center.lat.toFixed(3) + "," + center.lon.toFixed(3);
     if (others.key === k) return;
-    others = { key: k, status: "loading", list: [] };
+    others = { key: k, status: "loading", list: [], radius: RADII[0] };
     try {
-      var cached = sessionStorage.getItem("happy-hour-osm2:" + k);
-      if (cached) { others.list = JSON.parse(cached); others.status = "ready"; return; }
+      var cached = JSON.parse(sessionStorage.getItem("happy-hour-osm3:" + k) || "null");
+      if (cached) { others.list = cached.list; others.radius = cached.radius; others.status = "ready"; return; }
     } catch (e) {}
-    var query = '[out:json][timeout:25];nwr["amenity"~"^(bar|pub|nightclub|biergarten)$"](around:' +
-      OTHER_RADIUS_M + "," + center.lat + "," + center.lon + ");out center tags 400;";
-    var ask = function (i) {
+    var ask = function (r, i) {
+      var query = '[out:json][timeout:25];nwr["amenity"~"^(bar|pub|nightclub|biergarten)$"](around:' +
+        RADII[r] + "," + center.lat + "," + center.lon + ");out center tags 600;";
       fetch(OVERPASS[i], {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -1936,7 +1937,7 @@
         .then(function (res) { return res.ok ? res.json() : Promise.reject(res.status); })
         .then(function (data) {
           if (others.key !== k) return;
-          others.list = (data.elements || [])
+          var found = (data.elements || [])
             .map(function (e) {
               var t = e.tags || {};
               return {
@@ -1948,30 +1949,36 @@
                 suburb: t["addr:suburb"] || t["addr:city"] || "",
               };
             })
-            .filter(function (o) { return o.name && o.lat != null && !isListed(o); });
+            .filter(function (o) { return o.name && o.lat != null; });
+          if (found.length < ENOUGH && r + 1 < RADII.length) { others.radius = RADII[r + 1]; render(); ask(r + 1, 0); return; }
+          others.list = found.filter(function (o) { return !isListed(o); });
+          others.radius = RADII[r];
           others.status = "ready";
-          try { sessionStorage.setItem("happy-hour-osm2:" + k, JSON.stringify(others.list)); } catch (e) {}
+          try { sessionStorage.setItem("happy-hour-osm3:" + k, JSON.stringify({ list: others.list, radius: others.radius })); } catch (e) {}
           render();
         })
         .catch(function () {
           if (others.key !== k) return;
-          if (i + 1 < OVERPASS.length) { ask(i + 1); return; }
+          if (i + 1 < OVERPASS.length) { ask(r, i + 1); return; }
           others.status = "error";
           render();
         });
     };
-    ask(0);
+    ask(0, 0);
   }
 
-  // Our venues ({ v, s, d }) and OpenStreetMap's ({ o, d }) within 2 km, closest first.
+  function radiusText() { return others.radius / 1000 + " km"; }
+
+  // Our venues ({ v, s, d }) and OpenStreetMap's ({ o, d }) within the search radius, closest first.
   function allRows(center) {
+    var maxKm = others.radius / 1000;
     var q = state.query.toLowerCase();
     var ours = venues
       .map(function (v) { return { v: v, s: status(v), d: km(center, v) }; })
-      .filter(function (r) { return r.d <= ALL_KM && (!q || matches(r.v, state.query)); });
+      .filter(function (r) { return r.d <= maxKm && (!q || matches(r.v, state.query)); });
     var osm = others.list
       .map(function (o) { return { o: o, d: km(center, o) }; })
-      .filter(function (r) { return r.d <= ALL_KM && (!q || r.o.name.toLowerCase().indexOf(q) >= 0); });
+      .filter(function (r) { return r.d <= maxKm && (!q || r.o.name.toLowerCase().indexOf(q) >= 0); });
     // Happy hours on now (or starting within the hour) a short walk away go first: that's the bonus.
     ours.forEach(function (r) {
       r.boost = r.d > BOOST_KM ? 0 : r.s.kind === "on" ? 2 : r.s.kind === "soon" && r.s.minsAway <= SOON_MINS ? 1 : 0;
@@ -2050,8 +2057,9 @@
     var hh = rows.filter(function (r) { return r.v || r.o.happy; }).length;
     setCount(rows.length, rows.length === 1 ? "pub or bar" : "pubs & bars");
     if (hh) setNote(noteEl.textContent.replace(" 🔥 = happy hour.", " " + hh + " with happy hours 🔥"));
+    if (others.status === "ready" && others.radius > RADII[0]) setNote("Not many pubs close by, so here's everything within " + radiusText() + ". " + noteEl.textContent);
 
-    if (others.status === "loading") otherMessage("Finding every pub and bar nearby…");
+    if (others.status === "loading") otherMessage(others.radius > RADII[0] ? "Not many close by, looking further out (" + radiusText() + ")…" : "Finding every pub and bar nearby…");
     if (others.status === "error") {
       var retry = el("button", "chip", "Try again");
       retry.addEventListener("click", function () { others.key = null; render(); });
@@ -2062,8 +2070,8 @@
       empty.appendChild(el("div", "big", "🔍"));
       empty.appendChild(el("h2", "display", "No pubs found"));
       empty.appendChild(el("p", null, state.query
-        ? "Nothing called “" + state.query + "” within 2 km."
-        : "No pubs or bars on the map within 2 km. Try searching a nearby suburb."));
+        ? "Nothing called “" + state.query + "” within " + radiusText() + "."
+        : "No pubs or bars on the map within " + radiusText() + ". Try searching a nearby suburb or town."));
       listEl.appendChild(empty);
       return;
     }
@@ -2080,7 +2088,7 @@
     }
     if (others.status === "ready") {
       var credit = el("li", "others-msg small");
-      credit.appendChild(document.createTextNode("Pubs and bars from OpenStreetMap, within 2 km. Know a happy hour we're missing? "));
+      credit.appendChild(document.createTextNode("Pubs and bars from OpenStreetMap, within " + radiusText() + ". Know a happy hour we're missing? "));
       var tell = el("a", null, "Tell us");
       tell.href = "https://github.com/sanj2888/Happy-Hour/issues/new?title=Happy%20hour%20suggestion";
       tell.target = "_blank";
