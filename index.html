@@ -373,6 +373,44 @@
     border-radius: 999px; padding: 8px 14px;
   }
   .checked { color: var(--muted); font-size: 12px; }
+  .checked.old { color: var(--soon); font-weight: 600; }
+  .report { margin-left: auto; flex: none; white-space: nowrap; color: var(--muted); font-size: 12px; text-decoration: underline; text-underline-offset: 2px; }
+
+  /* ---- Bar crawl (from saved spots) ---- */
+  .crawl {
+    list-style: none;
+    border: 1.5px solid var(--cyan); border-radius: 24px;
+    background: linear-gradient(135deg, rgba(45, 226, 255, .12), rgba(255, 79, 216, .1));
+    box-shadow: var(--glow-cyan);
+    padding: 16px 18px;
+  }
+  .crawl h2 { margin: 0; font-size: 17px; }
+  .crawl p { margin: 6px 0 0; color: var(--muted); font-size: 14px; }
+  .crawl ol { margin: 10px 0 0; padding-left: 22px; font-size: 14px; font-weight: 600; }
+  .crawl ol span { color: var(--muted); font-weight: 500; }
+  .crawl .actions { flex-wrap: wrap; }
+
+  /* ---- Add to home screen tip ---- */
+  .install {
+    display: flex; align-items: center; gap: 10px;
+    margin-top: 18px; padding: 12px 12px 12px 16px;
+    border: 1.5px dashed var(--chip-line); border-radius: 20px; background: var(--card);
+  }
+  .install-icon { font-size: 24px; line-height: 1; }
+  .install-text { flex: 1; margin: 0; font-size: 14px; color: var(--muted); line-height: 1.35; }
+  .install-text b { color: var(--text); }
+  .install .chip { flex: none; }
+  .install-x { flex: none; border: 0; background: none; color: var(--muted); font-size: 16px; padding: 6px; cursor: pointer; }
+
+  /* ---- Map pin groups ---- */
+  .cluster {
+    display: grid; place-items: center;
+    border-radius: 50%;
+    background: rgba(22, 10, 38, .92); color: #fff;
+    border: 2px solid var(--c, var(--pink));
+    box-shadow: 0 0 8px var(--c, var(--pink)), 0 0 18px var(--c, var(--pink));
+    font: 800 14px/1 Unbounded, Inter, system-ui, sans-serif;
+  }
   .sticky-bar {
     position: fixed; z-index: 7;
     top: calc(env(safe-area-inset-top) + 64px); left: 50%;
@@ -501,6 +539,8 @@
       <button class="chip" data-drink="wine" aria-pressed="false">🍷 Wine</button>
       <button class="chip" data-drink="cocktails" aria-pressed="false">🍸 Cocktails</button>
       <button class="chip" data-drink="food" aria-pressed="false">🦪 Food</button>
+      <button class="chip" data-late aria-pressed="false">🌙 Late</button>
+      <button class="chip" data-cheap aria-pressed="false">💸 $10 &amp; under</button>
     </div>
   </div>
 
@@ -528,6 +568,8 @@
       <button class="chip" data-drink="wine" aria-pressed="false">🍷 Wine</button>
       <button class="chip" data-drink="cocktails" aria-pressed="false">🍸 Cocktails</button>
       <button class="chip" data-drink="food" aria-pressed="false">🦪 Food</button>
+      <button class="chip" data-late aria-pressed="false">🌙 Late</button>
+      <button class="chip" data-cheap aria-pressed="false">💸 $10 &amp; under</button>
     </div>
   </div>
 
@@ -545,6 +587,12 @@
     </div>
   </div>
   <ul class="list" id="list"></ul>
+  <div class="install" id="install" hidden>
+    <span class="install-icon" aria-hidden="true">📲</span>
+    <p class="install-text" id="install-text"></p>
+    <button class="chip" id="install-add" type="button" hidden>Add</button>
+    <button class="install-x" id="install-x" type="button" aria-label="Hide this tip">✕</button>
+  </div>
 
   <footer>
     18+ only. Drink responsibly and check deals with the bar before you go.<br>
@@ -578,6 +626,7 @@
     tab: "now", place: "near", when: "now", me: null, query: "",
     planCity: "Sydney", area: "all", day: "any", drink: null, savedOnly: false,
     focus: null, // a searched place: { label, lat, lon }
+    late: false, cheap: false,
   };
   try {
     var saved = JSON.parse(localStorage.getItem(STORE) || "{}");
@@ -779,10 +828,23 @@
     return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(q);
   }
 
+  var OLD_AFTER_DAYS = 180; // deals not checked for this long get a "may have changed" warning
+
   function checkedText(iso) {
     var d = new Date(iso + "T00:00:00");
-    if (isNaN(d)) return "";
-    return "Checked " + d.toLocaleDateString("en-AU", { day: "numeric", month: "short" });
+    if (isNaN(d)) return null;
+    var old = (Date.now() - d) / 864e5 > OLD_AFTER_DAYS;
+    return old
+      ? { old: true, text: "⚠️ Last checked " + d.toLocaleDateString("en-AU", { month: "short", year: "numeric" }) + ", may have changed" }
+      : { old: false, text: "Checked " + d.toLocaleDateString("en-AU", { day: "numeric", month: "short" }) };
+  }
+
+  // Opens a pre-filled GitHub issue so people can tell us a deal has changed.
+  function reportLink(v) {
+    var title = "Wrong deal: " + v.name + " (" + v.area + ")";
+    var body = "What's changed? (new times, new prices, closed down...)\n\n\n---\nListed as: " + v.deal +
+      "\nTimes: " + hoursText(v) + "\nSource: " + (v.source || "none") + "\nChecked: " + (v.checked || "never");
+    return "https://github.com/sanj2888/Happy-Hour/issues/new?title=" + encodeURIComponent(title) + "&body=" + encodeURIComponent(body);
   }
 
   function matches(v, query) {
@@ -802,6 +864,8 @@
       b.setAttribute("aria-pressed", String(b.dataset.drink === state.drink));
     });
     document.querySelector("[data-saved-only]").setAttribute("aria-pressed", String(state.savedOnly));
+    document.querySelectorAll("[data-late]").forEach(function (b) { b.setAttribute("aria-pressed", String(state.late)); });
+    document.querySelectorAll("[data-cheap]").forEach(function (b) { b.setAttribute("aria-pressed", String(state.cheap)); });
     document.getElementById("now-panel").hidden = state.tab === "plan";
     document.getElementById("surprise").hidden = state.tab === "plan";
     document.getElementById("plan-panel").hidden = state.tab !== "plan";
@@ -876,17 +940,46 @@
   function share(v) {
     var text = "🍻 Happy hour at " + v.name + " (" + v.area + ")\n" + v.deal + "\n🕓 " + hoursText(v) +
       "\n📍 " + mapsLink(v);
-    var url = location.origin + location.pathname;
+    // The link opens the app straight to this bar.
+    var url = location.origin + location.pathname + "?bar=" + encodeURIComponent(v.name) + "&city=" + encodeURIComponent(v.city);
+    sendText("Happy hour at " + v.name, text, url);
+  }
+
+  function sendText(title, text, url) {
     if (navigator.share) {
-      navigator.share({ title: "Happy hour at " + v.name, text: text, url: url }).catch(function () {});
+      navigator.share({ title: title, text: text, url: url }).catch(function () {});
     } else {
       window.open("https://wa.me/?text=" + encodeURIComponent(text + "\n\nFound on " + url), "_blank", "noopener");
     }
   }
 
+  var LATE_FROM = 21 * 60; // "Late" means the happy hour runs past 9 pm
+  var CHEAP_MAX = 10;      // "$10 & under" means the deal mentions a price of $10 or less
+
+  function isLate(v) {
+    return v.slots.some(function (s) { return s.to <= s.from || s.to >= LATE_FROM; });
+  }
+
+  function isCheap(v) {
+    return (v.deal.match(/\$\s?\d+(\.\d+)?/g) || []).some(function (p) { return Number(p.replace(/[$\s]/g, "")) <= CHEAP_MAX; });
+  }
+
   function passesFilters(v) {
     if (state.drink && !DRINKS[state.drink].test(v.deal)) return false;
+    if (state.late && !isLate(v)) return false;
+    if (state.cheap && !isCheap(v)) return false;
     return true;
+  }
+
+  function anyFilter() { return !!(state.query || state.drink || state.savedOnly || state.late || state.cheap); }
+
+  // The filters as words, e.g. " with beer deals, late, $10 & under".
+  function filterWords() {
+    var bits = [];
+    if (state.drink) bits.push(state.drink === "food" ? "food deals" : state.drink + " deals");
+    if (state.late) bits.push("running late");
+    if (state.cheap) bits.push("$10 & under");
+    return bits.length ? " (" + bits.join(", ") + ")" : "";
   }
 
   // ----- Plan ahead: every venue, grouped by area -----
@@ -986,7 +1079,7 @@
     planCount = rows.length;
     var where = areaName();
     var when = weekend ? " this weekend" : day == null ? "" : " on " + DAY_NAMES[day];
-    var drink = state.drink ? " with " + (state.drink === "food" ? "food" : state.drink) + " deals" : "";
+    var drink = filterWords();
     var match = state.query ? " matching \u201c" + state.query + "\u201d" : "";
     setNote(rows.length + " happy hour" + (rows.length === 1 ? "" : "s") + drink + match + " " + where + when + ".");
 
@@ -1045,8 +1138,11 @@
     });
   }
 
+  var SOON_MINS = 60; // On now also lists happy hours starting within this many minutes
+
   // The happy hours matching the Right now filters, best first.
-  function nowRows() {
+  // With soon set, the ones starting within the hour instead.
+  function nowRows(soon) {
     var c = city();
     var from = origin();
     var useDistance = from && nearestCity(from).d <= FAR_AWAY_KM;
@@ -1059,6 +1155,7 @@
         if (state.query && !matches(r.v, state.query)) return false;
         if (state.savedOnly && !isSaved(r.v)) return false;
         if (!passesFilters(r.v)) return false;
+        if (soon) return r.s.kind === "soon" && r.s.minsAway <= SOON_MINS;
         if (state.when === "now") return r.s.kind === "on";
         if (state.when === "today") return r.s.today;
         return true;
@@ -1079,13 +1176,14 @@
     markNowButtons();
     var c = city();
     var rows = nowRows();
+    var soon = state.when === "now" ? nowRows(true) : [];
     shown = rows;
 
     listEl.textContent = "";
-    if (!rows.length) {
+    if (!rows.length && !soon.length) {
       var empty = el("li", "empty");
       var isNow = state.when === "now";
-      if (state.query || state.drink || state.savedOnly) {
+      if (anyFilter()) {
         empty.appendChild(el("div", "big", state.savedOnly && !saved.length ? "❤️" : "🔍"));
         empty.appendChild(el("h2", "display", state.savedOnly && !saved.length ? "Nothing saved yet" : "No luck"));
         empty.appendChild(el("p", null, state.savedOnly && !saved.length
@@ -1124,15 +1222,81 @@
       return;
     }
 
+    if (state.savedOnly && rows.length >= 2) listEl.appendChild(crawlBox(rows));
     rows.forEach(function (r) {
       listEl.appendChild(card(r.v, r.s, r.d));
     });
+    if (soon.length) {
+      var head = el("li", "area-head", "⏳ Starting within the hour");
+      head.appendChild(el("span", null, soon.length + (soon.length === 1 ? " spot" : " spots")));
+      listEl.appendChild(head);
+      soon.forEach(function (r) { listEl.appendChild(card(r.v, r.s, r.d)); });
+    }
+  }
+
+  // ----- Bar crawl: saved spots in an easy walking order -----
+
+  var CRAWL_STOPS = 5; // Google Maps on phones takes a start, a finish and up to 3 stops between
+
+  // Starts nearest you (or with the happy hour on soonest), then always walks to the closest next spot.
+  function crawlOrder(rows) {
+    var left = rows.slice(0, 50), out = [];
+    var at = origin();
+    if (!at) { out.push(left.shift()); at = out[0].v; }
+    while (left.length && out.length < CRAWL_STOPS) {
+      var best = 0;
+      for (var i = 1; i < left.length; i++) if (km(at, left[i].v) < km(at, left[best].v)) best = i;
+      out.push(left.splice(best, 1)[0]);
+      at = out[out.length - 1].v;
+    }
+    return out;
+  }
+
+  // Walking directions through the stops, starting from wherever the phone is.
+  function crawlLink(stops) {
+    var place = function (r) { return r.v.name + ", " + r.v.area + " " + CITIES[r.v.city].state; };
+    var url = "https://www.google.com/maps/dir/?api=1&travelmode=walking&destination=" + encodeURIComponent(place(stops[stops.length - 1]));
+    if (stops.length > 1) url += "&waypoints=" + encodeURIComponent(stops.slice(0, -1).map(place).join("|"));
+    return url;
+  }
+
+  function crawlBox(rows) {
+    var stops = crawlOrder(rows);
+    var box = el("li", "crawl");
+    box.appendChild(el("h2", "display", "🚶 Bar crawl"));
+    box.appendChild(el("p", null, rows.length > CRAWL_STOPS
+      ? "Your first " + CRAWL_STOPS + " saved spots in an easy walking order."
+      : "Your saved spots in an easy walking order."));
+    var ol = el("ol");
+    stops.forEach(function (r) {
+      var li = el("li", null, r.v.name);
+      li.appendChild(el("span", null, " · " + r.v.area + " · " + r.s.label));
+      ol.appendChild(li);
+    });
+    box.appendChild(ol);
+    var actions = el("div", "actions");
+    var go = el("a", "go", "Walk the route →");
+    go.href = crawlLink(stops);
+    go.target = "_blank";
+    go.rel = "noopener";
+    actions.appendChild(go);
+    var send = el("button", "chip", "📤 Send to the group");
+    send.addEventListener("click", function () {
+      var text = "🍻 Bar crawl!\n" + stops.map(function (r, i) {
+        return (i + 1) + ". " + r.v.name + " (" + r.v.area + "): " + r.v.deal + ", " + hoursText(r.v);
+      }).join("\n") + "\n\n🗺️ Route: " + crawlLink(stops);
+      sendText("Bar crawl", text, location.origin + location.pathname);
+    });
+    actions.appendChild(send);
+    box.appendChild(actions);
+    return box;
   }
 
   // ----- Map tab (Leaflet with free OpenStreetMap tiles, no key, loaded only when opened) -----
 
   var LEAFLET = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/";
-  var leaflet = { status: "idle", map: null, layer: null, viewKey: null, markers: {} };
+  var CLUSTER = "https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/";
+  var leaflet = { status: "idle", map: null, layer: null, me: null, viewKey: null, markers: {} };
   var PIN_COLOURS = { on: "#3df2a5", last: "#ff8a1f", soon: "#ffc14d", off: "#b48cff" };
 
   function loadLeaflet() {
@@ -1144,9 +1308,30 @@
     document.head.appendChild(css);
     var js = document.createElement("script");
     js.src = LEAFLET + "leaflet.min.js";
-    js.onload = function () { leaflet.status = "ready"; render(); };
+    js.onload = function () {
+      // Pins close together join into one numbered bubble. If that add-on can't load, the map still works.
+      var groupCss = document.createElement("link");
+      groupCss.rel = "stylesheet";
+      groupCss.href = CLUSTER + "MarkerCluster.css";
+      document.head.appendChild(groupCss);
+      var group = document.createElement("script");
+      group.src = CLUSTER + "leaflet.markercluster.js";
+      group.onload = group.onerror = function () { leaflet.status = "ready"; render(); };
+      document.head.appendChild(group);
+    };
     js.onerror = function () { leaflet.status = "error"; render(); };
     document.head.appendChild(js);
+  }
+
+  // A numbered bubble for a group of pins: green if any of them is on now.
+  function clusterIcon(group) {
+    var pins = group.getAllChildMarkers();
+    var on = pins.some(function (p) { return p.options.kind === "on"; });
+    var size = pins.length < 10 ? 34 : pins.length < 50 ? 40 : 46;
+    return L.divIcon({
+      html: '<div class="cluster" style="width:' + size + "px;height:" + size + "px;--c:" + (on ? PIN_COLOURS.on : PIN_COLOURS.off) + '">' + pins.length + "</div>",
+      className: "", iconSize: [size, size],
+    });
   }
 
   function popup(v, badge) {
@@ -1182,17 +1367,21 @@
         maxZoom: 19,
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
       }).addTo(leaflet.map);
-      leaflet.layer = L.layerGroup().addTo(leaflet.map);
+      leaflet.layer = (L.markerClusterGroup
+        ? L.markerClusterGroup({ showCoverageOnHover: false, maxClusterRadius: 40, disableClusteringAtZoom: 16, iconCreateFunction: clusterIcon })
+        : L.layerGroup()).addTo(leaflet.map);
+      leaflet.me = L.layerGroup().addTo(leaflet.map);
     }
     var map = leaflet.map;
     map.invalidateSize();
     leaflet.layer.clearLayers();
+    leaflet.me.clearLayers();
     leaflet.markers = {};
     rows.forEach(function (r) {
       var colour = PIN_COLOURS[r.s.last ? "last" : r.s.kind];
       var pin = L.circleMarker([r.v.lat, r.v.lon], {
         radius: r.s.kind === "on" ? 10 : 7, color: colour, fillColor: colour,
-        fillOpacity: r.s.kind === "off" ? 0.45 : 0.9, weight: 2, className: "pin",
+        fillOpacity: r.s.kind === "off" ? 0.45 : 0.9, weight: 2, className: "pin", kind: r.s.kind,
       }).bindPopup(popup(r.v, r.s));
       pin.addTo(leaflet.layer);
       leaflet.markers[key(r.v)] = pin;
@@ -1202,7 +1391,7 @@
     if (near) {
       L.circleMarker([from.lat, from.lon], {
         radius: 8, color: "#ffffff", weight: 3, fillColor: state.focus ? "#ff4fd8" : "#2de2ff", fillOpacity: 1, className: "pin",
-      }).bindTooltip(state.focus ? state.focus.label : "You're here").addTo(leaflet.layer);
+      }).bindTooltip(state.focus ? state.focus.label : "You're here").addTo(leaflet.me);
     }
     // Only move the map when the place changes, so it doesn't jump while you look around.
     var viewKey = near ? (state.focus ? "focus:" + state.focus.label : "me") : c;
@@ -1316,7 +1505,7 @@
   }
 
   function renderOtherBars() {
-    if (state.place !== "near" || !state.me || state.savedOnly || state.drink) return;
+    if (state.place !== "near" || !state.me || state.savedOnly || state.drink || state.late || state.cheap) return;
     loadOthers();
     var head = el("li", "area-head others-head", "Other bars & pubs nearby");
     head.appendChild(el("span", null, "Not in our happy hour list"));
@@ -1354,6 +1543,7 @@
 
   function card(v, badge, distance) {
     var li = el("li", "card");
+    li.dataset.key = key(v);
     var top = el("div", "top");
     var head = el("div");
     head.appendChild(el("h2", "name display", v.name));
@@ -1384,7 +1574,13 @@
     li.appendChild(actions);
 
     var meta = el("div", "meta");
-    if (v.checked) meta.appendChild(el("span", "checked", checkedText(v.checked)));
+    var checked = v.checked && checkedText(v.checked);
+    if (checked) meta.appendChild(el("span", "checked" + (checked.old ? " old" : ""), checked.text));
+    var report = el("a", "report", "Wrong deal?");
+    report.href = reportLink(v);
+    report.target = "_blank";
+    report.rel = "noopener";
+    meta.appendChild(report);
     li.appendChild(meta);
     return li;
   }
@@ -1449,11 +1645,17 @@
     var pick = pool[Math.floor(Math.random() * pool.length)];
     if (state.tab === "map") {
       var pin = leaflet.markers[key(pick.v)];
-      if (pin) { leaflet.map.setView(pin.getLatLng(), 15); pin.openPopup(); }
+      if (pin) {
+        var show = function () { leaflet.map.setView(pin.getLatLng(), Math.max(leaflet.map.getZoom(), 15)); pin.openPopup(); };
+        // In a numbered group, zoom in until the pin is on its own first.
+        if (leaflet.layer.zoomToShowLayer) leaflet.layer.zoomToShowLayer(pin, show);
+        else show();
+      }
       setNote("Tonight's pick: " + pick.v.name + " 🎉");
       return;
     }
-    var card = listEl.children[shown.indexOf(pick)];
+    var card = [].filter.call(listEl.querySelectorAll(".card"), function (c) { return c.dataset.key === key(pick.v); })[0];
+    if (!card) return;
     document.querySelectorAll(".card.picked").forEach(function (c) { c.classList.remove("picked"); });
     card.classList.add("picked");
     card.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -1517,6 +1719,12 @@
       state.drink = state.drink === b.dataset.drink ? null : b.dataset.drink;
       render();
     });
+  });
+  document.querySelectorAll("[data-late]").forEach(function (b) {
+    b.addEventListener("click", function () { state.late = !state.late; render(); });
+  });
+  document.querySelectorAll("[data-cheap]").forEach(function (b) {
+    b.addEventListener("click", function () { state.cheap = !state.cheap; render(); });
   });
   document.querySelector("[data-saved-only]").addEventListener("click", function () {
     state.savedOnly = !state.savedOnly;
@@ -1759,12 +1967,16 @@
       if (state.day === "weekend") bits.push("This weekend");
       else if (state.day !== "any") bits.push(DAYS[Number(state.day)]);
       if (state.drink) bits.push(state.drink[0].toUpperCase() + state.drink.slice(1));
+      if (state.late) bits.push("🌙 Late");
+      if (state.cheap) bits.push("💸 $10 & under");
       bits.unshift(planCount + (planCount === 1 ? " spot" : " spots"));
     } else {
       bits.push(state.focus ? "📍 " + state.focus.label : state.place === "near" ? "📍 Near me" : state.place);
       bits.push({ now: "🔥 On now", today: "Today", all: "All week" }[state.when]);
       if (state.savedOnly) bits.push("❤️ Saved");
       if (state.drink) bits.push(state.drink[0].toUpperCase() + state.drink.slice(1));
+      if (state.late) bits.push("🌙 Late");
+      if (state.cheap) bits.push("💸 $10 & under");
       if (state.query) bits.push("\u201c" + state.query + "\u201d");
       bits.unshift(shown.length + (shown.length === 1 ? " spot" : " spots"));
     }
@@ -1783,8 +1995,58 @@
   });
   window.addEventListener("scroll", updateSticky, { passive: true });
 
-  if (state.place === "near") locate();
+  // A shared link (?bar=Name&city=City) opens straight to that bar.
+  var params = new URLSearchParams(location.search);
+  var sharedBar = venues.filter(function (v) {
+    return v.name === params.get("bar") && (!params.get("city") || v.city === params.get("city"));
+  })[0];
+  if (params.has("bar")) history.replaceState(null, "", location.pathname);
+  if (sharedBar) {
+    state.tab = "now";
+    suggestions = [{ value: sharedBar.name, bar: sharedBar }];
+    choose(0);
+  } else if (state.place === "near") locate();
   render();
+
+  // ----- "Add to your home screen" tip -----
+  // Android/Chrome offers a one-tap install; on iPhone it explains the Share menu steps.
+  // Hidden once installed or after tapping ✕.
+
+  var INSTALL_STORE = "happy-hour-install-hidden";
+  var installBox = document.getElementById("install");
+  var installPrompt = null;
+
+  function installHidden() {
+    if (window.matchMedia("(display-mode: standalone)").matches || navigator.standalone) return true;
+    try { return localStorage.getItem(INSTALL_STORE) === "1"; } catch (e) { return false; }
+  }
+
+  function showInstall(text, canAdd) {
+    if (installHidden()) return;
+    document.getElementById("install-text").innerHTML = text;
+    document.getElementById("install-add").hidden = !canAdd;
+    installBox.hidden = false;
+  }
+
+  window.addEventListener("beforeinstallprompt", function (e) {
+    e.preventDefault();
+    installPrompt = e;
+    showInstall("<b>Get the app.</b> Add Happy Hour to your home screen. It's free and opens in a tap.", true);
+  });
+  document.getElementById("install-add").addEventListener("click", function () {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    installPrompt.userChoice.then(function (c) { if (c.outcome === "accepted") installBox.hidden = true; });
+    installPrompt = null;
+  });
+  document.getElementById("install-x").addEventListener("click", function () {
+    installBox.hidden = true;
+    try { localStorage.setItem(INSTALL_STORE, "1"); } catch (e) {}
+  });
+  window.addEventListener("appinstalled", function () { installBox.hidden = true; });
+  if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
+    showInstall("<b>Get the app.</b> Tap Share <b>⬆️</b> (in Safari it may be under <b>•••</b>), then <b>Add to Home Screen</b>.", false);
+  }
 
   // Keeps a copy of the app on the phone so it still opens with poor signal.
   if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
