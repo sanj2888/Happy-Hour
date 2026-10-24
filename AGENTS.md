@@ -9,7 +9,7 @@ Guidance for AI coding agents working on this repo.
 - `lat`/`lon` are approximate (from the street address or suburb), so the app rounds distances ("about 2 km away"). Directions search Google Maps by name and suburb.
 - Look: fun and bold for 18–35s, a neon night-out theme (always dark, pink and cyan glows, Unbounded headings, emoji welcome). Colours are CSS variables in `:root`. `thumbnail.png` is the link preview (1200×630).
 - Cities for now: Sydney and Melbourne (`CITIES` in `index.html`).
-- `data/` holds the Greater Sydney research as two CSVs (venues and happy-hour sessions) with verification status; see `data/README.md`. Sessions marked `Listed (partial)` are not added to the app.
+- `data/` holds the Greater Sydney and Greater Melbourne research as CSVs (venues and happy-hour sessions for each) with verification status; see `data/README.md`. Sessions marked `Listed (partial)` are not added to the app. In the Melbourne venues CSV, `Directory only` venues need a source before they can be added.
 - Before pushing, open the page in Chromium (Playwright) at phone width (390px), in light and dark mode, and check there are no console errors.
 - New suburbs need a region in `REGIONS` in `index.html` (for the Plan ahead area picker); unmapped suburbs fall under "Other areas".
 - Saved spots live only on each phone (localStorage `happy-hour-saved`). `sw.js` caches the app network-first so it opens with poor signal.

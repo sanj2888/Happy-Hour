@@ -23,3 +23,17 @@ Days, start and end times, eligible drinks, advertised prices, whether it's memb
 `Listed (partial)` means the source didn't state the days or times, so those come from the directory and are not confirmed. These sessions are left out of the app.
 
 Deals change often. Treat `Listed` sessions as a guide and re-check before relying on them.
+
+# Greater Melbourne pubs and bars data
+
+Two more spreadsheets in the same format, built on 24 October 2026 from the owner's 387-entry Melbourne directory plus the Melbourne venues already in the app.
+
+## melbourne_venues.csv: one row per venue (425 venues)
+
+The directory's duplicates are merged (The Drunken Poet, entries 58 and 144; Westside Ale Works, entries 305 and 324). Venues already in the app, and app venues the directory didn't list, are included. Columns are the same as `sydney_venues.csv`. In `happy_hour_status`, `Directory only` means the directory listed a happy hour but no source could confirm it; `notes` says why (sources disagree, too old, or nothing found).
+
+## melbourne_happy_hours.csv: one row per happy-hour session (60 sessions)
+
+Sessions with a source were added to the app. Sessions marked `Listed (partial)` come from the directory only (days and times as written there, no deal or source) and are not in the app.
+
+Most of the directory's 387 venues are `Not checked`: they were listed without a happy hour, or with one marked unverified.
