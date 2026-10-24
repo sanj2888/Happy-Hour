@@ -1,0 +1,41 @@
+name: "🎤 Add a daily special"
+description: Trivia, parma night, steak night, live music... tell us about a regular special.
+title: "Daily special: "
+labels: ["daily special"]
+body:
+  - type: input
+    id: venue
+    attributes:
+      label: Venue name
+      placeholder: The Local Arms
+    validations:
+      required: true
+  - type: input
+    id: suburb
+    attributes:
+      label: Suburb and city
+      placeholder: Richmond, Melbourne
+    validations:
+      required: true
+  - type: input
+    id: when
+    attributes:
+      label: Which day, and what time?
+      placeholder: Tuesdays from 7 pm
+    validations:
+      required: true
+  - type: textarea
+    id: special
+    attributes:
+      label: The special
+      placeholder: Trivia night, or $18 parma and a pot
+    validations:
+      required: true
+  - type: input
+    id: source
+    attributes:
+      label: Where did you see it?
+      description: A link to the venue's website, menu or social post is best.
+      placeholder: https://
+    validations:
+      required: true

@@ -9,6 +9,8 @@
 //     deal: "What's on offer",
 //     members: true,                  // only if the deal is for club members (leave this line out otherwise)
 //     group: "Merivale",              // the hospitality group that runs it, if known (leave out otherwise)
+//     specials: [{ days: "Tue", what: "Trivia from 7 pm" }],  // regular daily specials (optional)
+//     specialsSource: "https://where the specials came from",   // needed if specials are listed
 //     hours: [{ days: "Mon-Fri", from: "16:00", to: "18:00" }],
 //     source: "https://where the details came from",
 //     checked: "2026-10-23",          // the date someone last checked the details
@@ -2725,6 +2727,12 @@ window.VENUES = [
     hours: [{ days: "Mon-Fri", from: "16:00", to: "18:00" }],
     source: "https://thebridgehotel.com.au/events/happy-hour/",
     checked: "2026-10-24",
+    specials: [
+      { days: "Tue", what: "Steak night" },
+      { days: "Thu", what: "Parma night" },
+      { days: "Sun", what: "Sunday roast" },
+    ],
+    specialsSource: "https://www.eatdrinkcheap.com.au/melbourne/the-bridge-hotel-richmond",
   },
   {
     name: "Harlow",

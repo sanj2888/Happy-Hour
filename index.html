@@ -165,10 +165,9 @@
   .seg.seg-full button { padding: 10px 4px; font-size: 14px; white-space: nowrap; }
   .seg-full + .chips { margin-top: 10px; }
   .seg.seg-show { grid-template-columns: 1fr 1fr; }
-  .seg.seg-radius { grid-template-columns: repeat(5, minmax(0, 1fr)); }
-  .seg.seg-radius button { padding: 8px 2px; font-size: 13px; }
   .seg.seg-show button[aria-pressed="true"] { background: var(--sunset); color: #1a0b2e; box-shadow: var(--glow-pink); }
   .seg-full + .seg-full { margin-top: 8px; }
+  .seg-full + .all-filters { margin-top: 10px; }
   .hh-kicker {
     display: inline-block; margin-top: 10px; padding: 2px 9px; border-radius: 999px;
     background: rgba(255, 138, 31, .14); color: var(--orange); font-size: 12px; font-weight: 800;
@@ -220,7 +219,16 @@
   .search::placeholder { color: var(--muted); }
   .search::selection { background: rgba(255, 79, 216, .45); color: #fff; }
   .search-box { position: relative; }
-  .search-main { margin-bottom: 10px; z-index: 9; } /* above the pinned tabs so suggestions can be tapped */
+  .search-row { display: flex; gap: 8px; align-items: stretch; margin-bottom: 10px; position: relative; z-index: 9; } /* above the pinned tabs so suggestions can be tapped */
+  .search-main { flex: 1; min-width: 0; }
+  .radius-select {
+    flex: none; width: 92px; appearance: none; -webkit-appearance: none;
+    border: 1.5px solid var(--cyan); border-radius: 18px; padding: 0 26px 0 12px;
+    background: #12061f url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%232de2ff' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 10px center;
+    color: #e8fcff; font: 700 15px/1 Inter, system-ui, sans-serif;
+    box-shadow: var(--glow-cyan);
+  }
+  .radius-select:focus { outline: 2px solid var(--cyan); outline-offset: 1px; }
   .search-main .search {
     padding: 15px 16px; font-size: 17px; border-radius: 18px;
     background: #12061f; border-color: var(--pink);
@@ -409,6 +417,12 @@
   }
   .checked { color: var(--muted); font-size: 12px; }
   .checked.old { color: var(--soon); font-weight: 600; }
+  .open-now { margin: 8px 0 0; font-size: 14px; font-weight: 700; }
+  .specials { margin: 6px 0 0; color: var(--muted); font-size: 14px; }
+  .specials b { color: var(--yellow); }
+  .open-now::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: currentColor; margin-right: 7px; vertical-align: 1px; }
+  .open-now.yes { color: var(--on); }
+  .open-now.no { color: var(--off); }
   .report { margin-left: auto; flex: none; white-space: nowrap; color: var(--muted); font-size: 12px; text-decoration: underline; text-underline-offset: 2px; }
 
   /* ---- Bar crawl (from saved spots) ---- */
@@ -616,13 +630,22 @@
 </header>
 
 <div class="wrap">
-  <div class="search-box search-main">
-    <input class="search" id="search" type="search" placeholder="🔍 Search a suburb, street or pub" aria-label="Search a suburb, street or pub" autocomplete="off" enterkeyhint="search" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="suggest">
-    <ul class="suggest" id="suggest" role="listbox" hidden></ul>
+  <div class="search-row">
+    <div class="search-box search-main">
+      <input class="search" id="search" type="search" placeholder="🔍 Suburb, street or pub" aria-label="Search a suburb, street or pub" autocomplete="off" enterkeyhint="search" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="suggest">
+      <ul class="suggest" id="suggest" role="listbox" hidden></ul>
+    </div>
+    <select class="radius-select" id="radius" aria-label="How far to look for pubs and bars">
+      <option value="1000">1 km</option>
+      <option value="2000">2 km</option>
+      <option value="5000">5 km</option>
+      <option value="10000">10 km</option>
+      <option value="20000">20 km</option>
+    </select>
   </div>
 
   <div class="tabs" role="tablist" aria-label="View">
-    <button class="tab" role="tab" data-tab="now" aria-selected="true">🔥 Right now</button>
+    <button class="tab" role="tab" data-tab="now" aria-selected="true">📍 Nearby</button>
     <button class="tab" role="tab" data-tab="plan" aria-selected="false">🗓️ Plan ahead</button>
     <button class="tab" role="tab" data-tab="map" aria-selected="false">🗺️ Map</button>
   </div>
@@ -638,12 +661,9 @@
       <button type="button" data-show="all" aria-pressed="false">🍺 All pubs &amp; bars</button>
       <button type="button" data-show="hh" aria-pressed="false">🔥 Happy hours</button>
     </div>
-    <div class="seg seg-full seg-radius" id="radius-seg" role="group" aria-label="How far to look">
-      <button type="button" data-radius="auto" aria-pressed="false">Auto</button>
-      <button type="button" data-radius="1000" aria-pressed="false">1 km</button>
-      <button type="button" data-radius="2000" aria-pressed="false">2 km</button>
-      <button type="button" data-radius="5000" aria-pressed="false">5 km</button>
-      <button type="button" data-radius="10000" aria-pressed="false">10 km</button>
+    <div class="chips all-filters" id="all-filters" role="group" aria-label="Filters">
+      <button class="chip" type="button" data-open-now aria-pressed="false">🟢 Open now</button>
+      <button class="chip" type="button" data-saved-all aria-pressed="false">❤️ Saved</button>
     </div>
     <div class="seg seg-full" id="when-seg" role="group" aria-label="When">
       <button type="button" data-when="now" aria-pressed="false">🔥 On now</button>
@@ -722,7 +742,8 @@
 
   <footer>
     18+ only. Drink responsibly and check deals with the bar before you go.<br>
-    Know a happy hour we're missing? <a href="https://github.com/sanj2888/Happy-Hour/issues/new?title=Happy%20hour%20suggestion" target="_blank" rel="noopener">Spill the tea</a><br>
+    Know one we're missing? <a href="https://github.com/sanj2888/Happy-Hour/issues/new?template=happy-hour.yml" target="_blank" rel="noopener">➕ Add a happy hour</a> ·
+    <a href="https://github.com/sanj2888/Happy-Hour/issues/new?template=daily-special.yml" target="_blank" rel="noopener">🎤 Add a daily special</a><br>
     <button class="link-btn" type="button" data-share-app>📤 Share the app</button> ·
     <button class="link-btn" type="button" data-get-app>📲 Save as an app</button>
   </footer>
@@ -789,12 +810,15 @@
     late: false, cheap: false,
     crawl: false, crawlStops: 3, // the bar crawl planner (open or not, and how many bars)
     crawlFrom: null, // where the crawl starts: null (automatic), "me", or { label, lat, lon }
-    show: "all", // Right now and Map: "all" pubs and bars (happy hours marked 🔥), or "hh" happy hours only
-    radius: "auto", // All pubs & bars: how far to look, "auto" (2 km, wider in spread-out suburbs) or metres
+    show: "all", // Nearby and Map: "all" pubs and bars (happy hours marked 🔥), or "hh" happy hours only
+    radius: 2000, // All pubs & bars: how far to look, in metres (the dropdown beside the search box)
+    openNow: false, // All pubs & bars: only places open now
   };
   try {
     var saved = JSON.parse(localStorage.getItem(STORE) || "{}");
     ["tab", "place", "when", "planCity", "area", "day", "show", "radius"].forEach(function (k) { if (saved[k]) state[k] = saved[k]; });
+    if (!(Number(state.radius) > 0)) state.radius = 2000; // "auto" from an older version
+    state.radius = Number(state.radius);
   } catch (e) {}
 
   // ----- Reading the hours -----
@@ -934,8 +958,11 @@
   }
 
   // Venue positions are approximate, so distances are rounded.
+  var WALK_KM_PER_MIN = 4.5 / 60; // a relaxed walking pace
+
+  // Venue positions are approximate, so walks are rounded to 5 minutes.
   function distanceText(d) {
-    if (d < 1) return "under 1 km away";
+    if (d < 2.5) return "about " + Math.max(5, Math.round(d / WALK_KM_PER_MIN / 5) * 5) + " min walk";
     if (d < 10) return "about " + d.toFixed(1) + " km away";
     return "about " + Math.round(d) + " km away";
   }
@@ -1016,7 +1043,8 @@
     var q = query.toLowerCase();
     var exact = venues.some(function (x) { return x.name.toLowerCase() === q; });
     if (exact) return v.name.toLowerCase() === q;
-    var text = (v.name + " " + v.area + " " + v.deal + (v.members ? " members club" : "") + (v.group ? " " + v.group : "")).toLowerCase();
+    var text = (v.name + " " + v.area + " " + v.deal + (v.members ? " members club" : "") + (v.group ? " " + v.group : "") +
+      (v.specials || []).map(function (x) { return " " + x.what; }).join("")).toLowerCase();
     return q.split(/\s+/).every(function (word) { return text.indexOf(word) >= 0; });
   }
 
@@ -1036,8 +1064,12 @@
     var all = state.show === "all";
     document.getElementById("when-seg").hidden = all;
     document.getElementById("key-pub").hidden = !all;
-    document.getElementById("radius-seg").hidden = !all;
-    document.querySelectorAll("[data-radius]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.radius === String(state.radius))); });
+    document.getElementById("all-filters").hidden = !all;
+    document.querySelector("[data-open-now]").setAttribute("aria-pressed", String(state.openNow));
+    document.querySelector("[data-saved-all]").setAttribute("aria-pressed", String(state.savedOnly));
+    var radiusEl = document.getElementById("radius");
+    radiusEl.hidden = !all || state.tab === "plan";
+    radiusEl.value = String(state.radius);
     document.getElementById("now-tiles").hidden = all;
     document.getElementById("now-panel").hidden = state.tab === "plan";
     document.getElementById("surprise").hidden = state.tab === "plan" || all;
@@ -1291,7 +1323,7 @@
     });
   }
 
-  // ----- Right now -----
+  // ----- Nearby -----
 
   function renderNow() {
     if (state.show === "all") renderAllBars(); else renderHappyHours();
@@ -1315,7 +1347,7 @@
 
   var SOON_MINS = 60; // On now also lists happy hours starting within this many minutes
 
-  // The happy hours matching the Right now filters, best first.
+  // The happy hours matching the Nearby filters, best first.
   // With soon set, the ones starting within the hour instead.
   function nowRows(soon) {
     var c = city();
@@ -1838,7 +1870,7 @@
     if (leaflet.status !== "ready") setCount(null);
     if (leaflet.status === "loading") { setNote("Loading the map…"); return; }
     if (leaflet.status === "error") {
-      setNote("The map can't load right now (no signal?). The Right now tab still works.");
+      setNote("The map can't load right now (no signal?). The Nearby tab still works.");
       return;
     }
     var L = window.L, c = city();
@@ -1884,7 +1916,7 @@
       near ? (state.focus ? "focus:" + state.focus.label : "me") : c;
     if (leaflet.viewKey !== viewKey) {
       leaflet.viewKey = viewKey;
-      if (all && center) map.setView([center.lat, center.lon], others.radius > 5000 ? 12 : others.radius > 2000 ? 13 : others.radius > 1000 ? 15 : 16);
+      if (all && center) map.setView([center.lat, center.lon], { 1000: 16, 2000: 15, 5000: 13, 10000: 12, 20000: 11 }[others.radius] || 14);
       else if (near) map.setView([from.lat, from.lon], 14);
       else if (rows.length) map.fitBounds(rows.map(function (r) { return [r.v.lat, r.v.lon]; }), { padding: [30, 30], maxZoom: 14 });
       else map.setView([CITIES[c].lat, CITIES[c].lon], 12);
@@ -1904,13 +1936,14 @@
   // Every bar, pub, nightclub and beer garden around a place, mixed in with our happy hours
   // (marked 🔥), closest first. Works anywhere, not just Sydney and Melbourne.
 
-  var RADII = [2000, 5000, 10000]; // metres
-  var ENOUGH = 8;
+  var RADII = [1000, 2000, 5000, 10000, 20000]; // the distance dropdown, in metres
+  var FEW = 5; // fewer than this nearby suggests looking further
   var ALL_PAGE = 25;
   var BOOST_KM = 0.4; // about a 5-minute walk
   var OTHER_TYPES = { bar: "🍸 Bar", pub: "🍺 Pub", nightclub: "🪩 Nightclub", biergarten: "🌳 Beer garden" };
   // Free public Overpass servers; the second is tried if the first is busy.
-  var OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
+  var OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter",
+    "https://maps.mail.ru/osm/tools/overpass/api/interpreter"];
   var others = { key: null, status: "idle", list: [] };
   var allShown = ALL_PAGE, allKey = null;
 
@@ -1929,29 +1962,36 @@
     return CITIES[state.place];
   }
 
-  // Auto looks within 2 km first; in spread-out suburbs with fewer than ENOUGH pubs, widens to 5 km,
-  // then 10 km. A chosen distance looks exactly that far.
+  // Gives up on a slow server after `ms` so the next one can be tried.
+  function timedFetch(url, options, ms) {
+    var ctrl = window.AbortController ? new AbortController() : null;
+    var timer = ctrl && setTimeout(function () { ctrl.abort(); }, ms);
+    return fetch(url, Object.assign({}, options, ctrl ? { signal: ctrl.signal } : {}))
+      .finally(function () { clearTimeout(timer); });
+  }
+
+  // Every pub and bar within the chosen distance (the dropdown) of the place.
   function loadOthers(center) {
-    var radii = state.radius === "auto" ? RADII : [Number(state.radius)];
-    var k = center.lat.toFixed(3) + "," + center.lon.toFixed(3) + "|" + state.radius;
+    var radius = state.radius;
+    var k = center.lat.toFixed(3) + "," + center.lon.toFixed(3) + "|" + radius;
     if (others.key === k) return;
-    others = { key: k, status: "loading", list: [], radius: radii[0] };
+    others = { key: k, status: "loading", list: [], radius: radius };
     try {
-      var cached = JSON.parse(sessionStorage.getItem("happy-hour-osm4:" + k) || "null");
-      if (cached) { others.list = cached.list; others.radius = cached.radius; others.status = "ready"; return; }
+      var cached = JSON.parse(sessionStorage.getItem("happy-hour-osm5:" + k) || "null");
+      if (cached) { others.list = cached; others.status = "ready"; return; }
     } catch (e) {}
-    var ask = function (r, i) {
-      var query = '[out:json][timeout:25];nwr["amenity"~"^(bar|pub|nightclub|biergarten)$"](around:' +
-        radii[r] + "," + center.lat + "," + center.lon + ");out center tags " + (radii[r] > 2000 ? 1500 : 600) + ";";
-      fetch(OVERPASS[i], {
+    var query = '[out:json][timeout:25];nwr["amenity"~"^(bar|pub|nightclub|biergarten)$"](around:' +
+      radius + "," + center.lat + "," + center.lon + ");out center tags " + (radius > 5000 ? 2000 : radius > 2000 ? 1500 : 600) + ";";
+    var ask = function (i) {
+      timedFetch(OVERPASS[i], {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: "data=" + encodeURIComponent(query),
-      })
+      }, 20000)
         .then(function (res) { return res.ok ? res.json() : Promise.reject(res.status); })
         .then(function (data) {
           if (others.key !== k) return;
-          var found = (data.elements || [])
+          others.list = (data.elements || [])
             .map(function (e) {
               var t = e.tags || {};
               return {
@@ -1963,36 +2003,43 @@
                 suburb: t["addr:suburb"] || t["addr:city"] || "",
               };
             })
-            .filter(function (o) { return o.name && o.lat != null; });
-          if (found.length < ENOUGH && r + 1 < radii.length) { others.radius = radii[r + 1]; render(); ask(r + 1, 0); return; }
-          others.list = found.filter(function (o) { return !isListed(o); });
-          others.radius = radii[r];
+            .filter(function (o) { return o.name && o.lat != null && !isListed(o); });
           others.status = "ready";
-          try { sessionStorage.setItem("happy-hour-osm4:" + k, JSON.stringify({ list: others.list, radius: others.radius })); } catch (e) {}
+          try { sessionStorage.setItem("happy-hour-osm5:" + k, JSON.stringify(others.list)); } catch (e) {}
           render();
         })
         .catch(function () {
           if (others.key !== k) return;
-          if (i + 1 < OVERPASS.length) { ask(r, i + 1); return; }
+          if (i + 1 < OVERPASS.length) { ask(i + 1); return; }
           others.status = "error";
           render();
         });
     };
-    ask(0, 0);
+    ask(0);
   }
 
   function radiusText() { return others.radius / 1000 + " km"; }
 
   // Our venues ({ v, s, d }) and OpenStreetMap's ({ o, d }) within the search radius, closest first.
+  // Saved shows every saved place, however far. Open now keeps places known to be open
+  // (from their OpenStreetMap hours, or a happy hour that's on).
   function allRows(center) {
-    var maxKm = others.radius / 1000;
+    var maxKm = state.savedOnly ? Infinity : others.radius / 1000;
     var q = state.query.toLowerCase();
     var ours = venues
       .map(function (v) { return { v: v, s: status(v), d: km(center, v) }; })
-      .filter(function (r) { return r.d <= maxKm && (!q || matches(r.v, state.query)); });
-    var osm = others.list
+      .filter(function (r) {
+        if (state.savedOnly && !isSaved(r.v)) return false;
+        if (state.openNow && r.s.kind !== "on") return false;
+        return r.d <= maxKm && (!q || matches(r.v, state.query));
+      });
+    var pool = state.savedOnly ? savedPubs : others.list;
+    var osm = pool
       .map(function (o) { return { o: o, d: km(center, o) }; })
-      .filter(function (r) { return r.d <= maxKm && (!q || r.o.name.toLowerCase().indexOf(q) >= 0); });
+      .filter(function (r) {
+        if (state.openNow && !(openStatus(r.o) || {}).open) return false;
+        return r.d <= maxKm && (!q || r.o.name.toLowerCase().indexOf(q) >= 0);
+      });
     // Happy hours on now (or starting within the hour) a short walk away go first: that's the bonus.
     ours.forEach(function (r) {
       r.boost = r.d > BOOST_KM ? 0 : r.s.kind === "on" ? 2 : r.s.kind === "soon" && r.s.minsAway <= SOON_MINS ? 1 : 0;
@@ -2014,9 +2061,88 @@
       .replace(/^24\/7$/, "Open 24 hours");
   }
 
+  // OpenStreetMap positions are exact, so walks are to the minute.
   function otherDistance(d) {
-    if (d < 1) return Math.max(50, Math.round(d * 20) * 50) + " m away";
+    if (d < 2.5) return Math.max(1, Math.round(d / WALK_KM_PER_MIN)) + " min walk";
     return d.toFixed(1) + " km away";
+  }
+
+  // ----- Open now? Reads common OpenStreetMap opening_hours, e.g. "Mo-Fr 11:00-23:00; Sa-Su 12:00-01:00" -----
+  // Anything it can't read (public holidays, months, "sunset"...) is skipped; with nothing readable the
+  // status is unknown rather than guessed.
+
+  var OSM_DAY = { Mo: 1, Tu: 2, We: 3, Th: 4, Fr: 5, Sa: 6, Su: 0 };
+
+  function osmDays(text) {
+    if (!text) return [0, 1, 2, 3, 4, 5, 6];
+    var out = [];
+    var ok = text.split(",").every(function (part) {
+      var m = /^(Mo|Tu|We|Th|Fr|Sa|Su)(?:-(Mo|Tu|We|Th|Fr|Sa|Su))?$/.exec(part.trim());
+      if (!m) return false;
+      for (var d = OSM_DAY[m[1]]; ; d = (d + 1) % 7) {
+        if (out.indexOf(d) < 0) out.push(d);
+        if (d === OSM_DAY[m[2] || m[1]]) break;
+      }
+      return true;
+    });
+    return ok ? out : null;
+  }
+
+  // { day: [{from, to}] } in minutes; "to" past midnight is over 1440. Null if nothing is readable.
+  function osmWeek(text) {
+    if (/^\s*24\/7\s*$/.test(text)) return { all: true };
+    var week = {}, any = false;
+    text.split(";").forEach(function (rule) {
+      var m = /^\s*((?:(?:Mo|Tu|We|Th|Fr|Sa|Su)(?:-(?:Mo|Tu|We|Th|Fr|Sa|Su))?,?)*)\s*(.*?)\s*$/.exec(rule);
+      var days = m && osmDays(m[1].replace(/,$/, ""));
+      if (!days) return;
+      var times = m[2];
+      var ranges = [];
+      if (!/^(off|closed)$/i.test(times)) {
+        var ok = times.split(",").every(function (t) {
+          var r = /^(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})\+?$/.exec(t.trim());
+          if (!r) return false;
+          var from = r[1] * 60 + Number(r[2]), to = r[3] * 60 + Number(r[4]);
+          if (to <= from) to += 1440;
+          ranges.push({ from: from, to: to });
+          return true;
+        });
+        if (!ok || !ranges.length) return;
+      }
+      days.forEach(function (d) { week[d] = ranges; });
+      any = true;
+    });
+    return any ? week : null;
+  }
+
+  // The time where the pub is: the city's clock near Sydney or Melbourne, otherwise the phone's.
+  function localNow(place) {
+    var nc = nearestCity(place);
+    if (nc.d <= FAR_AWAY_KM) return cityNow(nc.city);
+    var t = new Date();
+    return { day: t.getDay(), mins: t.getHours() * 60 + t.getMinutes() };
+  }
+
+  // { open: true, label: "Open · till 1 am" } / { open: false, label: "Closed · opens 4 pm" } / null (unknown)
+  function openStatus(o) {
+    if (!o.hours) return null;
+    var week = osmWeek(o.hours);
+    if (!week) return null;
+    if (week.all) return { open: true, label: "Open 24 hours" };
+    var now = localNow(o), yesterday = (now.day + 6) % 7;
+    var today = week[now.day], before = week[yesterday];
+    // Days the hours don't mention are closed (OpenStreetMap's rule).
+    var i, r;
+    for (i = 0; before && i < before.length; i++) {
+      r = before[i];
+      if (r.to > 1440 && now.mins < r.to - 1440) return { open: true, label: "Open · till " + clock(r.to) };
+    }
+    for (i = 0; today && i < today.length; i++) {
+      r = today[i];
+      if (now.mins >= r.from && now.mins < r.to) return { open: true, label: "Open · till " + clock(r.to) };
+    }
+    var later = (today || []).filter(function (x) { return x.from > now.mins; })[0];
+    return { open: false, label: later ? "Closed · opens " + clock(later.from) : "Closed now" };
   }
 
   // Google Maps by name and address when OpenStreetMap has the street, otherwise the exact spot.
@@ -2033,15 +2159,35 @@
       li.appendChild(el("span", "hh-kicker", "🔥 Happy hour"));
       li.appendChild(el("p", "deal", readableHours(o.happy)));
     }
-    if (o.hours) li.appendChild(el("p", "hours", "🕓 Open " + readableHours(o.hours)));
+    var open = openStatus(o);
+    if (open) li.appendChild(el("p", "open-now " + (open.open ? "yes" : "no"), open.label));
+    if (o.hours) li.appendChild(el("p", "hours", "🕓 " + readableHours(o.hours)));
     var actions = el("div", "actions");
     var dir = el("a", "go", "Take me there →");
     dir.href = otherLink(o);
     dir.target = "_blank";
     dir.rel = "noopener";
     actions.appendChild(dir);
+    var heart = el("button", "icon-btn" + (isSavedPub(o) ? " saved" : ""), isSavedPub(o) ? "❤️" : "♡");
+    heart.setAttribute("aria-label", (isSavedPub(o) ? "Remove " : "Save ") + o.name);
+    heart.setAttribute("aria-pressed", String(isSavedPub(o)));
+    heart.addEventListener("click", function () { toggleSavedPub(o); render(); });
+    actions.appendChild(heart);
     li.appendChild(actions);
     return li;
+  }
+
+  // Saved pubs from OpenStreetMap live on this phone too (separate from saved happy hours).
+  var SAVED_PUBS_STORE = "happy-hour-saved-pubs";
+  var savedPubs = [];
+  try { savedPubs = JSON.parse(localStorage.getItem(SAVED_PUBS_STORE) || "[]"); } catch (e) {}
+  function pubKey(o) { return o.name + "@" + o.lat.toFixed(4) + "," + o.lon.toFixed(4); }
+  function isSavedPub(o) { return savedPubs.some(function (x) { return pubKey(x) === pubKey(o); }); }
+  function toggleSavedPub(o) {
+    var was = isSavedPub(o);
+    savedPubs = was ? savedPubs.filter(function (x) { return pubKey(x) !== pubKey(o); }) : savedPubs.concat([o]);
+    try { localStorage.setItem(SAVED_PUBS_STORE, JSON.stringify(savedPubs)); } catch (e) {}
+    toast(was ? "Removed from saved" : "Saved ❤️");
   }
 
   function heading(text, side) {
@@ -2065,25 +2211,35 @@
     if (!center) { setCount(null); return; } // the note says it's finding you, or how to allow location
     loadOthers(center);
     var rows = allRows(center);
-    var k = others.key + "|" + state.query;
+    var k = others.key + "|" + state.query + "|" + state.openNow + "|" + state.savedOnly;
     if (k !== allKey) { allKey = k; allShown = ALL_PAGE; }
     shown = rows.filter(function (r) { return r.v; });
     var hh = rows.filter(function (r) { return r.v || r.o.happy; }).length;
     setCount(rows.length, rows.length === 1 ? "pub or bar" : "pubs & bars");
     if (hh) setNote(noteEl.textContent.replace(" 🔥 = happy hour.", " " + hh + " with happy hours 🔥"));
-    if (others.status === "ready" && state.radius === "auto" && others.radius > RADII[0]) setNote("Not many pubs close by, so here's everything within " + radiusText() + ". " + noteEl.textContent);
 
-    if (others.status === "loading") otherMessage(state.radius === "auto" && others.radius > RADII[0] ? "Not many close by, looking further out (" + radiusText() + ")…" : "Finding every pub and bar nearby…");
+
+    if (others.status === "loading" && !state.savedOnly) otherMessage("Finding every pub and bar within " + radiusText() + "…");
+    if (state.openNow && rows.length) otherMessage("Places known to be open now. Many pubs don't list their hours on the map, so some may be missing.");
+    // Not many around: offer to look further (e.g. spread-out suburbs).
+    var wider = RADII.filter(function (r) { return r > state.radius; })[0];
+    if (others.status === "ready" && rows.length < FEW && wider && !state.savedOnly && !state.openNow) {
+      var further = el("button", "chip", "Look within " + wider / 1000 + " km");
+      further.addEventListener("click", function () { state.radius = wider; save(); render(); });
+      otherMessage((rows.length ? "Only " + rows.length : "Nothing") + " within " + radiusText() + ". ", further);
+    }
     if (others.status === "error") {
       var retry = el("button", "chip", "Try again");
       retry.addEventListener("click", function () { others.key = null; render(); });
       otherMessage("Couldn't load every pub just now (busy or no signal). ", retry);
     }
-    if (!rows.length && others.status === "ready") {
+    if (!rows.length && (others.status === "ready" || state.savedOnly)) {
       var empty = el("li", "empty");
-      empty.appendChild(el("div", "big", "🔍"));
-      empty.appendChild(el("h2", "display", "No pubs found"));
-      empty.appendChild(el("p", null, state.query
+      empty.appendChild(el("div", "big", state.savedOnly ? "❤️" : state.openNow ? "🌙" : "🔍"));
+      empty.appendChild(el("h2", "display", state.savedOnly ? "Nothing saved yet" : state.openNow ? "Nothing known to be open" : "No pubs found"));
+      empty.appendChild(el("p", null, state.savedOnly ? "Tap the ♡ on any pub or bar to save it here."
+        : state.openNow ? "No places within " + radiusText() + " list opening hours that say they're open now. Turn off Open now to see them all."
+        : state.query
         ? "Nothing called “" + state.query + "” within " + radiusText() + "."
         : "No pubs or bars on the map within " + radiusText() + ". Try searching a nearby suburb or town."));
       listEl.appendChild(empty);
@@ -2104,12 +2260,26 @@
       var credit = el("li", "others-msg small");
       credit.appendChild(document.createTextNode("Pubs and bars from OpenStreetMap, within " + radiusText() + ". Know a happy hour we're missing? "));
       var tell = el("a", null, "Tell us");
-      tell.href = "https://github.com/sanj2888/Happy-Hour/issues/new?title=Happy%20hour%20suggestion";
+      tell.href = "https://github.com/sanj2888/Happy-Hour/issues/new?template=happy-hour.yml";
       tell.target = "_blank";
       tell.rel = "noopener";
       credit.appendChild(tell);
       listEl.appendChild(credit);
     }
+  }
+
+  // "🎉 Tonight: Steak night · Thu parma night · Sun roast": today's special first, then the rest.
+  function specialsLine(v) {
+    var today = cityNow(v.city).day;
+    var line = el("p", "specials");
+    var tonight = v.specials.filter(function (x) { return dayList(x.days).indexOf(today) >= 0; });
+    var rest = v.specials.filter(function (x) { return tonight.indexOf(x) < 0; });
+    if (tonight.length) line.appendChild(el("b", null, "🎉 Today: " + tonight.map(function (x) { return x.what; }).join(", ")));
+    if (rest.length) {
+      line.appendChild(document.createTextNode((tonight.length ? " · " : "🎉 ") +
+        rest.map(function (x) { return x.days.replace(/-/g, "–") + ": " + x.what; }).join(" · ")));
+    }
+    return line;
   }
 
   // kicker: label the card "🔥 Happy hour" (used in the All pubs & bars list).
@@ -2127,6 +2297,7 @@
     li.appendChild(el("p", "deal", v.deal));
     if (v.members) li.appendChild(el("span", "members", "🎟️ Members only"));
     li.appendChild(el("p", "hours", "🕓 " + hoursText(v)));
+    if (v.specials && v.specials.length) li.appendChild(specialsLine(v));
 
     var actions = el("div", "actions");
     var dir = el("a", "go", "Take me there →");
@@ -2269,12 +2440,12 @@
     });
   });
   document.getElementById("surprise").addEventListener("click", surprise);
-  document.querySelectorAll("[data-radius]").forEach(function (b) {
-    b.addEventListener("click", function () {
-      state.radius = b.dataset.radius === "auto" ? "auto" : Number(b.dataset.radius);
-      save();
-      render();
-    });
+  document.querySelector("[data-open-now]").addEventListener("click", function () { state.openNow = !state.openNow; render(); });
+  document.querySelector("[data-saved-all]").addEventListener("click", function () { state.savedOnly = !state.savedOnly; render(); });
+  document.getElementById("radius").addEventListener("change", function (e) {
+    state.radius = Number(e.target.value);
+    save();
+    render();
   });
   document.querySelectorAll("[data-show]").forEach(function (b) {
     b.addEventListener("click", function () {
@@ -2396,7 +2567,7 @@
       .slice(0, 3)
       .forEach(function (a) {
         if (a.area.toLowerCase() === q) exactArea = true;
-        out.push({ icon: "📍", name: a.area, sub: a.city + (placeSearch() ? " · every pub and bar around it" : " · " + a.n + (a.n === 1 ? " happy hour" : " happy hours") + " · and nearby"),
+        out.push({ icon: "📍", name: a.area, sub: a.city + (state.show === "all" ? " · every pub and bar around it" : " · " + a.n + (a.n === 1 ? " happy hour" : " happy hours") + " · and nearby"),
           value: a.area, place: { label: a.area, lat: a.lat, lon: a.lon } });
       });
     // Hospitality groups, e.g. typing "meri" offers all the Merivale venues.
@@ -2423,10 +2594,14 @@
             value: o.name, place: { label: o.name, lat: o.lat, lon: o.lon }, pub: true });
         });
     }
+    if (dealWord(query) && !venues.some(function (v) { return v.name.toLowerCase() === q; })) {
+      var n = venues.filter(function (v) { return matches(v, query); }).length;
+      out.push({ icon: "🔎", name: "Deals mentioning \u201c" + query + "\u201d", sub: n + (n === 1 ? " happy hour or special" : " happy hours and specials"), value: query, deals: true });
+    }
     if (q.length >= 3 && !exactArea) {
-      out.push(placeSearch()
+      out.push(state.show === "all"
         ? { icon: "🧭", name: "Pubs & bars near \u201c" + query + "\u201d", sub: "Any suburb, street or town in Australia", value: query, lookup: true }
-        : { icon: "🧭", name: "Happy hours near \u201c" + query + "\u201d", sub: "Any suburb or street in Sydney or Melbourne", value: query, lookup: true });
+        : { icon: "🧭", name: "Happy hours near \u201c" + query + "\u201d", sub: "Any suburb or street in Australia, closest happy hours first", value: query, lookup: true });
     }
     if (!out.some(function (o) { return o.bar || o.pub; }) && q.length >= 3) {
       out.push({ icon: "🗺️", name: "Find \u201c" + query + "\u201d on Google Maps", sub: "Not in our happy hour list yet", url: googleSearch(query) });
@@ -2452,14 +2627,21 @@
 
   // Looks up any suburb or street on OpenStreetMap's free search (Nominatim).
   // Finds a place on OpenStreetMap's free search (Nominatim): resolves to { label, lat, lon } or null.
+  // If OpenStreetMap's search is busy, Photon (also free, no key) is tried. Both are limited to Australia.
   function findPlace(text) {
-    var url = "https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=au&q=" + encodeURIComponent(text);
-    return fetch(url, { headers: { "Accept-Language": "en" } })
-      .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+    var label = text.replace(/\b\w/g, function (c) { return c.toUpperCase(); });
+    var nominatim = "https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=au&q=" + encodeURIComponent(text);
+    var photon = "https://photon.komoot.io/api/?limit=1&lang=en&bbox=112,-44,154,-10&q=" + encodeURIComponent(text);
+    var json = function (r) { return r.ok ? r.json() : Promise.reject(r.status); };
+    return timedFetch(nominatim, {}, 8000).then(json)
       .then(function (list) {
-        if (!list.length) return null;
-        var label = text.replace(/\b\w/g, function (c) { return c.toUpperCase(); });
-        return { label: label, lat: Number(list[0].lat), lon: Number(list[0].lon) };
+        return list.length ? { label: label, lat: Number(list[0].lat), lon: Number(list[0].lon) } : null;
+      })
+      .catch(function () {
+        return timedFetch(photon, {}, 8000).then(json).then(function (data) {
+          var f = data.features && data.features[0];
+          return f ? { label: label, lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0] } : null;
+        });
       });
   }
 
@@ -2513,6 +2695,7 @@
     var sg = suggestions[i];
     if (!sg) return;
     if (sg.url) { window.open(sg.url, "_blank", "noopener"); hideSuggestions(); return; }
+    if (sg.deals) { searchEl.blur(); showDeals(sg.value); return; }
     searchEl.value = sg.value;
     typed = sg.value;
     hideSuggestions();
@@ -2526,7 +2709,7 @@
       return;
     }
     // All pubs & bars: a bar shows every pub around it; a group (e.g. Merivale) switches to Happy hours.
-    if (sg.bar && placeSearch()) { focusOn({ label: sg.bar.name, lat: sg.bar.lat, lon: sg.bar.lon }); return; }
+    if (sg.bar && state.show === "all" && placeSearch()) { focusOn({ label: sg.bar.name, lat: sg.bar.lat, lon: sg.bar.lon }); return; }
     if (sg.group) state.show = "hh";
     state.focus = null;
     state.query = sg.value;
@@ -2554,6 +2737,8 @@
   function autofill(e) {
     var q = typed.trim().toLowerCase();
     if (q.length < 2 || (e.inputType && e.inputType.indexOf("delete") === 0)) return;
+    // Typed a suburb or bar in full: that's the one, don't fill in a longer name.
+    if (suggestions.some(function (sg) { return !sg.url && sg.name.toLowerCase() === q; })) return;
     for (var i = 0; i < suggestions.length; i++) {
       var name = suggestions[i].name;
       if (suggestions[i].url) continue;
@@ -2573,7 +2758,25 @@
 
   // All pubs & bars searches places: typing only shows suggestions, and the list moves when you
   // pick one (or press Enter). Happy hours and Plan ahead filter the list by name as you type.
-  function placeSearch() { return state.show === "all" && state.tab !== "plan"; }
+  function placeSearch() { return state.tab !== "plan"; }
+
+  // A word that's in our deals or specials ("steak", "oysters", "trivia") rather than a place.
+  function dealWord(text) {
+    return text.length >= 3 && !AREAS.some(function (a) { return a.area.toLowerCase() === text.toLowerCase(); }) &&
+      venues.some(function (v) { return matches(v, text); });
+  }
+
+  // Lists the happy hours mentioning the word, across the whole week.
+  function showDeals(text) {
+    searchEl.value = text; typed = text;
+    hideSuggestions();
+    state.focus = null;
+    state.query = text;
+    state.show = "hh";
+    state.when = "all";
+    save();
+    render();
+  }
 
   searchEl.addEventListener("input", function (e) {
     typed = e.target.value;
@@ -2611,6 +2814,7 @@
       if (bar) { suggestions = [{ value: bar.name, bar: bar }]; choose(0); }
       else if (hit) focusOn({ label: hit.area, lat: hit.lat, lon: hit.lon });
       else if (pub) focusOn({ label: pub.name, lat: pub.lat, lon: pub.lon });
+      else if (dealWord(text)) showDeals(text);
       else if (text.length >= 3) lookUp(text);
       return;
     }

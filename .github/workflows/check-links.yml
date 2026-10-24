@@ -1,0 +1,26 @@
+# Checks every venue's source link once a month and lists gone pages in a GitHub issue.
+# Free: GitHub Actions doesn't charge for public repositories. Run it any time from the
+# Actions tab > "Monthly link check" > "Run workflow".
+name: Monthly link check
+
+on:
+  schedule:
+    - cron: "17 21 1 * *" # 1st of each month, 21:17 UTC (early morning in Sydney and Melbourne)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node .github/scripts/check-links.mjs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
