@@ -1,0 +1,61 @@
+session_id,venue_id,venue_name,suburb,days,start_time,end_time,eligible_drinks,advertised_prices,members_only,source_url,source_type,verification_status,last_checked,notes
+mhh-0001,mel-corner-hotel-richmond,Corner Hotel,Richmond,Tue-Fri,16:00,19:00,,"$10 Young Henrys Natural Lager pints, $9 house wines (Front Bar)",No,https://cornerhotel.com/events/front-bar-happy-hour-richmond-4/,official,Verified,2026-10-24,
+mhh-0002,mel-bridge-hotel-richmond,Bridge Hotel,Richmond,Mon-Fri,16:00,18:00,,"$6 pots, $12 pints (selected taps), $8.50 house wines, $13 spritzes",No,https://thebridgehotel.com.au/events/happy-hour/,official,Verified,2026-10-24,
+mhh-0003,mel-harlow-richmond,Harlow,Richmond,Mon-Fri,16:00,18:00,,$11 house wines and house beer pints (not public holidays),No,https://harlowbar.com.au/events/happy-hour/,official,Verified,2026-10-24,
+mhh-0004,mel-richmond-club-hotel-richmond,Richmond Club Hotel,Richmond,Mon-Fri,16:00,19:00,,"$6.50 pots, $9.50 house wines, $11.50 basic spirits, $12.50 pints",No,https://richmondclubhotel.com.au/events/happy-hour/,official,Verified,2026-10-24,
+mhh-0005,mel-the-national-hotel-richmond,National Hotel,Richmond,Tue-Fri,16:00,19:00,,"$10 selected pints, $7 house wines, $12 Aperol or Campari spritz",No,https://thehappiesthour.com/venues/melbourne/national-hotel,third-party,Listed,2026-10-24,Thursday steak night also has happy hour prices.
+mhh-0006,mel-belgian-beer-cafe-southbank,Belgian Beer Cafe,Southbank,Daily,15:00,18:00,,"$10 Stella pints, $10 Pinot Grigio or Sangiovese, $12 Aperol Spritz",No,https://www.belgianbeercafemelbourne.com.au/,official,Verified,2026-10-24,
+mhh-0007,mel-left-bank-melbourne-southbank,Left Bank Melbourne,Southbank,Mon-Fri,15:00,18:00,,Half-price drinks,No,https://www.leftbankmelbourne.com.au/half-price-happy-hour/,official,Verified,2026-10-24,"Venue's own page says Mon-Fri 3-6pm; the directory said 4-6:30pm. A listing gives $15 cocktails, $8 spirits, wine and beer."
+mhh-0008,mel-the-standard-hotel-fitzroy,The Standard Hotel,Fitzroy,Mon-Thu,15:00,18:00,,$4 pots and $8 pints of Young Henry's Fitzroy Draught,No,https://eatdrinkcheap.com.au/melbourne/the-standard-hotel-fitzroy,third-party,Listed,2026-10-24,
+mhh-0009,mel-union-club-hotel-fitzroy,Union Club Hotel,Fitzroy,Mon-Fri,15:00,18:00,,"$9 pints of Stingray, $8 house wines",No,https://eatdrinkcheap.com.au/melbourne/monday-specials-fitzroy,third-party,Listed,2026-10-24,
+mhh-0010,mel-the-gertrude-hotel-fitzroy,The Gertrude Hotel,Fitzroy,Daily,16:00,18:00,,"$10 negronis, pints, wine, bubbles and cider",No,https://eatdrinkcheap.com.au/melbourne/gertrude-hotel-fitzroy,third-party,Listed,2026-10-24,
+mhh-0011,mel-slate-restaurant-bar-melbourne-cbd,Slate Restaurant Bar,Melbourne CBD,Tue-Fri,16:00,18:00,,"$10 pints of house beers, $9 basic spirits, $8 house wines and bubbles",No,https://thehappiesthour.com/blog/top-10-happy-hours-in-melbourne-cbd,third-party,Listed,2026-10-24,Directory said daily 4-6pm; The Happiest Hour (about 4 months old) says Tue-Fri 4-6pm.
+mhh-0012,mel-sorsi-e-morsi-st-kilda,Sorsi e Morsi,St Kilda,Wed-Sun,14:30,18:00,,"Beer, wine and cocktail specials",No,https://www.sorsiemorsi.com.au/,official,Verified,2026-10-24,
+mhh-0013,mel-grand-view-hotel-brunswick,Grandview Hotel,Brunswick West,Sat-Sun,12:00,17:00,,"$10 Hawkers Pale Ale pints and Aperol Spritz, $6 house wines and bubbles",No,https://www.grandviewbrunswick.com.au/pub,official,Verified,2026-10-24,Grandview Hotel is in Brunswick West.
+mhh-0014,mel-village-belle-hotel-st-kilda,Village Belle Hotel,St Kilda,Mon-Fri,17:00,19:00,,"Cheap schooners, house wines and spirits",No,https://whatsonstkilda.com/article/best-happy-hours-and-dining-deals-in-st-kilda-and-southside,third-party,Listed,2026-10-24,Sources disagree on price ($8 or $9 schooners); times agree.
+mhh-0015,mel-imperial-hotel-melbourne-cbd,Imperial Hotel,Melbourne CBD,Mon-Fri,16:00,18:00,,"$10 schooners, house wines and basic spirits (4-6pm); $16 classic cocktails (Thu-Fri 10pm-midnight)",No,https://bourkestreetimperial.com/events/happy-hour/,official,Verified,2026-10-24,A social post quoted $9 drinks and $15 cocktails; the venue's page says $10 and $16. Rooftop may be closing.
+mhh-0016,mel-imperial-hotel-melbourne-cbd,Imperial Hotel,Melbourne CBD,Thu-Fri,22:00,00:00,,"$10 schooners, house wines and basic spirits (4-6pm); $16 classic cocktails (Thu-Fri 10pm-midnight)",No,https://bourkestreetimperial.com/events/happy-hour/,official,Verified,2026-10-24,A social post quoted $9 drinks and $15 cocktails; the venue's page says $10 and $16. Rooftop may be closing.
+mhh-0017,mel-melbourne-public-south-wharf,Melbourne Public,South Wharf,Mon-Fri,16:00,18:00,,"$8 schooners and house wines, $15 select cocktails",No,https://www.eatdrinkcheap.com.au/melbourne/happy+hour-specials-south+wharf,third-party,Listed,2026-10-24,
+mhh-0018,mel-ruby-riviera-south-wharf,Ruby Riviera,South Wharf,Daily,14:00,18:00,,"$6 beers, wines, spirits and chef's snacks, $10 cocktails",No,https://www.eatdrinkcheap.com.au/melbourne/happy+hour-specials-south+wharf,third-party,Listed,2026-10-24,
+mhh-0019,mel-paradise-alley-collingwood,Paradise Alley,Collingwood,Wed-Fri,16:00,18:00,,"Cheap tap beer, cider and house spirits",No,https://eatdrinkcheap.com.au/melbourne/paradise-alley-collingwood,third-party,Listed,2026-10-24,"Sources disagree on prices ($7 or $8 house spirits, half-price taps); times agree."
+mhh-0020,mel-cabinet-bar-balcony-melbourne-cbd,Cabinet Bar & Balcony,Melbourne CBD,Tue all day; Wed–Fri 4–6pm,,,,,No,,directory,Listed (partial),2026-10-24,No source found.
+mhh-0021,mel-champagne-problems-melbourne-cbd,Champagne Problems,Melbourne CBD,Tue 4pm–close; Wed–Sat 4–7pm,,,,,No,,directory,Listed (partial),2026-10-24,No source found.
+mhh-0022,mel-fifty-five-melbourne-cbd,Fifty-Five,Melbourne CBD,Mon–Thu until 7pm,,,,,No,,directory,Listed (partial),2026-10-24,"Only source is about 20 months old (Mon-Thu 5-7pm, $10 pints, $12 frozen cocktails)."
+mhh-0023,mel-la-la-land-cbd-melbourne-cbd,La La Land CBD,Melbourne CBD,daily 4–7pm,,,,,No,,directory,Listed (partial),2026-10-24,No source found.
+mhh-0024,mel-little-reds-bar-melbourne-cbd,Little Red’s Bar,Melbourne CBD,Thu all day; Fri 4–8pm,,,,,No,,directory,Listed (partial),2026-10-24,No source found.
+mhh-0025,mel-the-joint-bar-melbourne-cbd,The Joint Bar,Melbourne CBD,Mon–Fri noon–2pm and 4–7pm,,,,,No,,directory,Listed (partial),2026-10-24,No source found.
+mhh-0026,mel-good-heavens-melbourne-cbd,Good Heavens,Melbourne CBD,Mon–Fri 3–6pm,,,,,No,,directory,Listed (partial),2026-10-24,Only source is about 2.5 years old.
+mhh-0027,mel-workshop-bar-melbourne-cbd,Workshop Bar,Melbourne CBD,daily 4–6pm,,,,,No,,directory,Listed (partial),2026-10-24,No source found.
+mhh-0028,mel-riverland-bar-melbourne-cbd,Riverland Bar,Melbourne CBD,Mon–Fri 4–6pm,,,,,No,,directory,Listed (partial),2026-10-24,No source found.
+mhh-0029,mel-naked-for-satan-fitzroy,Naked For Satan,Fitzroy,Mon–Fri 4–7pm; additional Monday offers,,,,,No,,directory,Listed (partial),2026-10-24,Sources disagree on times (4-7pm vs 5-7pm) and deals.
+mhh-0030,mel-the-rainbow-hotel-fitzroy,The Rainbow Hotel,Fitzroy,Mon–Fri 3–6pm,,,,,No,,directory,Listed (partial),2026-10-24,Sources disagree on times (3-6pm vs 4-6pm).
+mhh-0031,mel-the-workers-club-fitzroy,The Workers Club,Fitzroy,Tue–Fri 5–7pm,,,,,No,,directory,Listed (partial),2026-10-24,"Only a partial listing found ($9 house pints, 5-7pm)."
+mhh-0032,mel-lord-newry-hotel-fitzroy-north,Lord Newry Hotel,Fitzroy North,Tue–Fri 3–6pm,,,,,No,,directory,Listed (partial),2026-10-24,No source found.
+mhh-0033,mel-hecho-en-mexico-fitzroy,Hecho en Mexico,Fitzroy,Mon–Fri until 6pm,,,,,No,,directory,Listed (partial),2026-10-24,No current source found.
+mhh-0034,mel-manolo-fitzroy,Manolo,Fitzroy,Sun–Thu 5–6pm,,,,,No,,directory,Listed (partial),2026-10-24,Only bookings via OpenTable; times unclear.
+mhh-0035,mel-lulie-tavern-abbotsford,Lulie Tavern,Abbotsford,Mon–Fri until 6pm,,,,,No,,directory,Listed (partial),2026-10-24,Sources disagree on prices; no official source.
+mhh-0036,mel-two-hands-rooftop-abbotsford-collingwood-precinct,Two Hands Rooftop,Abbotsford/Collingwood precinct,Mon–Fri 4–7pm; verify exact address,,,,,No,,directory,Listed (partial),2026-10-24,No source found.
+mhh-0037,mel-pincho-disco-collingwood,Pincho Disco,Collingwood,Tue 5–6pm; Wed–Fri 4–6pm,,,,,No,,directory,Listed (partial),2026-10-24,No source found.
+mhh-0038,mel-howler-brunswick,Howler,Brunswick,daily 5–7pm,,,,,No,,directory,Listed (partial),2026-10-24,No happy hour details found.
+mhh-0039,mel-teller-brunswick,Teller,Brunswick,Mon–Fri 4–6pm,,,,,No,,directory,Listed (partial),2026-10-24,Sources disagree on days and times.
+mhh-0040,mel-welcome-to-brunswick-brunswick,Welcome to Brunswick,Brunswick,Wed–Fri 5–7pm,,,,,No,,directory,Listed (partial),2026-10-24,Listing gives 4-7pm but no prices.
+mhh-0041,mel-figlia-brunswick-east,Figlia,Brunswick East,Mon–Fri 5–6pm,,,,,No,,directory,Listed (partial),2026-10-24,No source found.
+mhh-0042,mel-royal-saxon-richmond,Royal Saxon,Richmond,Mon–Fri 3–6pm; weekends 2–5pm,,,,,No,,directory,Listed (partial),2026-10-24,No source found.
+mhh-0043,mel-frederic-richmond,Frederic,Richmond,Mon–Fri 4–7pm,,,,,No,,directory,Listed (partial),2026-10-24,No source found.
+mhh-0044,mel-lilac-wine-cremorne,Lilac Wine,Cremorne,Tue–Wed 4–5pm; Thu–Sat 3–5pm,,,,,No,,directory,Listed (partial),2026-10-24,Sources disagree on days and oyster prices.
+mhh-0045,mel-the-blacksmith-bar-richmond,The Blacksmith Bar,Richmond,Wednesday from 4pm; verify duration,,,,,No,,directory,Listed (partial),2026-10-24,No source found.
+mhh-0046,mel-beverly-rooftop-south-yarra,Beverly Rooftop,South Yarra,Mon–Fri 4–6pm,,,,,No,,directory,Listed (partial),2026-10-24,"Golden Hour Mon-Fri 4-6pm ($10 wines, beers, spirits) may have ended 30 June."
+mhh-0047,mel-temperance-hotel-south-yarra,Temperance Hotel,South Yarra,Mon–Fri 4–7pm,,,,,No,,directory,Listed (partial),2026-10-24,Listings disagree (5-7pm vs 4-7pm).
+mhh-0048,mel-katuk-south-yarra,Katuk,South Yarra,Fri 5–7pm,,,,,No,,directory,Listed (partial),2026-10-24,Listing gives a 5pm start but no end time.
+mhh-0049,mel-death-or-glory-prahran,Death or Glory,Prahran,Mon–Fri 4–7pm; weekends 4–6pm,,,,,No,,directory,Listed (partial),2026-10-24,"Only a late-night (10pm) Sun-Thu happy hour found, different from the directory."
+mhh-0050,mel-naughty-nancys-prahran,Naughty Nancy’s,Prahran,Mon–Fri 3–9pm,,,,,No,,directory,Listed (partial),2026-10-24,Only source about 2 years old.
+mhh-0051,mel-the-local-taphouse-st-kilda-east,The Local Taphouse,St Kilda East,Mon–Fri 4–6pm,,,,,No,,directory,Listed (partial),2026-10-24,Sources disagree on days (Mon-Thu vs Mon-Fri) and prices.
+mhh-0052,mel-dogs-bar-st-kilda,Dogs Bar,St Kilda,Tue–Fri 5–7pm; Sat–Sun 2–4pm,,,,,No,,directory,Listed (partial),2026-10-24,No source found.
+mhh-0053,mel-lady-of-st-kilda-st-kilda,Lady of St Kilda,St Kilda,Mon–Fri; verify long promotional window,,,,,No,,directory,Listed (partial),2026-10-24,No source found.
+mhh-0054,mel-the-wharf-hotel-south-wharf,The Wharf Hotel,South Wharf,daily 4–6pm,,,,,No,,directory,Listed (partial),2026-10-24,No source found.
+mhh-0055,mel-plus-5-south-wharf,Plus 5,South Wharf,Tue–Fri 2:30–6:30pm,,,,,No,,directory,Listed (partial),2026-10-24,Listing about 20 months old; days unclear.
+mhh-0056,mel-state-of-grace-melbourne-cbd,State of Grace,Melbourne CBD,Mon–Wed 5–7pm,,,,,No,,directory,Listed (partial),2026-10-24,Sources disagree on times (Mon-Fri 4-6pm vs Mon-Wed 5-7pm).
+mhh-0057,mel-bells-hotel-south-melbourne,Bells Hotel,South Melbourne,Mon–Fri 3–6pm,,,,,No,,directory,Listed (partial),2026-10-24,No source found.
+mhh-0058,mel-pier-17-docklands,Pier 17,Docklands,daily 2–6pm,,,,,No,,directory,Listed (partial),2026-10-24,No source found.
+mhh-0059,mel-sassy-italian-docklands,Sassy Italian,Docklands,daily 5–6:30pm,,,,,No,,directory,Listed (partial),2026-10-24,No source found.
+mhh-0060,mel-invergordon-docklands,Invergordon,Docklands,daily 4–6pm,,,,,No,,directory,Listed (partial),2026-10-24,No source found.
