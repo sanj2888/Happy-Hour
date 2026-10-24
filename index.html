@@ -155,7 +155,12 @@
   }
   .chips.scroll + .chips.scroll { margin-top: 2px; }
   .plan-top + .chips.scroll { margin-top: 6px; }
-  #now-panel > .chips.scroll:first-child { margin-top: -6px; }
+  /* Every filter stays on screen: buttons wrap onto a new line instead of scrolling sideways. */
+  .seg.seg-full { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 10px; }
+  .seg.seg-full button { padding: 10px 4px; font-size: 14px; white-space: nowrap; }
+  .seg-full + .chips { margin-top: 10px; }
+  .chips.filters { gap: 6px; }
+  .chips.filters .chip { padding: 7px 11px; font-size: 13.5px; }
   .divider { flex: none; width: 1px; margin: 6px 2px; background: var(--chip-line); }
   .chip {
     flex: none;
@@ -581,17 +586,18 @@
   </div>
 
   <div class="panel" id="now-panel">
-    <div class="chips scroll" role="group" aria-label="Where">
+    <div class="chips" role="group" aria-label="Where">
       <button class="chip focus-chip" id="focus-chip" aria-pressed="true" hidden></button>
       <button class="chip" data-place="near" aria-pressed="false">📍 Near me</button>
       <button class="chip" data-place="Sydney" aria-pressed="false">Sydney</button>
       <button class="chip" data-place="Melbourne" aria-pressed="false">Melbourne</button>
     </div>
-    <div class="chips scroll" role="group" aria-label="When and filters">
-      <button class="chip" data-when="now" aria-pressed="false">🔥 On now</button>
-      <button class="chip" data-when="today" aria-pressed="false">Today</button>
-      <button class="chip" data-when="all" aria-pressed="false">All week</button>
-      <span class="divider" aria-hidden="true"></span>
+    <div class="seg seg-full" role="group" aria-label="When">
+      <button type="button" data-when="now" aria-pressed="false">🔥 On now</button>
+      <button type="button" data-when="today" aria-pressed="false">Today</button>
+      <button type="button" data-when="all" aria-pressed="false">All week</button>
+    </div>
+    <div class="chips filters" role="group" aria-label="Filters">
       <button class="chip" data-saved-only aria-pressed="false">❤️ Saved</button>
       <button class="chip" data-drink="beer" aria-pressed="false">🍺 Beer</button>
       <button class="chip" data-drink="wine" aria-pressed="false">🍷 Wine</button>
@@ -610,7 +616,7 @@
       </div>
       <select class="select" id="area" aria-label="Area"></select>
     </div>
-    <div class="chips scroll" role="group" aria-label="Day">
+    <div class="chips filters" role="group" aria-label="Day">
       <button class="chip" data-day="any" aria-pressed="false">Any day</button>
       <button class="chip" data-day="weekend" aria-pressed="false">🎉 This weekend</button>
       <button class="chip" data-day="1" aria-pressed="false">Mon</button>
@@ -621,7 +627,7 @@
       <button class="chip" data-day="6" aria-pressed="false">Sat</button>
       <button class="chip" data-day="0" aria-pressed="false">Sun</button>
     </div>
-    <div class="chips scroll" role="group" aria-label="Drinks">
+    <div class="chips filters" role="group" aria-label="Drinks">
       <button class="chip" data-drink="beer" aria-pressed="false">🍺 Beer</button>
       <button class="chip" data-drink="wine" aria-pressed="false">🍷 Wine</button>
       <button class="chip" data-drink="cocktails" aria-pressed="false">🍸 Cocktails</button>
