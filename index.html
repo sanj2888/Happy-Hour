@@ -421,6 +421,12 @@
   .crawl-msg { margin: 12px 0 0; color: var(--muted); font-size: 14px; }
   .crawl-stops { list-style: none; margin: 12px 0 0; padding: 0; counter-reset: stop; }
   .crawl-stops li { counter-increment: stop; }
+  .crawl-start { margin-top: 12px; }
+  .crawl-pin { flex: none; width: 24px; text-align: center; font-size: 16px; line-height: 24px; }
+  .crawl-row.crawl-start::before { display: none; }
+  .crawl-stops.from-start { margin-top: 0; }
+  a.crawl-walk { text-decoration: none; }
+  a.crawl-walk:hover, a.crawl-walk:focus { color: var(--cyan); }
   .crawl-walk { display: block; margin: 2px 0 2px 26px; padding: 4px 0 4px 16px; border-left: 2px dashed var(--chip-line); color: var(--muted); font-size: 12px; }
   .crawl-row { display: flex; gap: 10px; align-items: flex-start; }
   .crawl-row::before {
@@ -1415,11 +1421,11 @@
   // suburb, else you. With none of those it starts wherever the most bars are on.
   function crawlStart() {
     var f = state.crawlFrom, out;
-    if (f === "me") out = state.me ? { place: state.me, label: "where you are" } : { place: null, label: "where you are", waiting: true };
+    if (f === "me") out = state.me ? { place: state.me, label: "where you are", me: true } : { place: null, label: "where you are", waiting: true };
     else if (f) out = { place: f, label: f.label };
     else {
       var bar = searchedBar(), o = origin();
-      out = bar ? { place: bar, label: bar.name } : o ? { place: o, label: state.focus ? state.focus.label : "where you are" } : { place: null, label: null };
+      out = bar ? { place: bar, label: bar.name, bar: bar } : o ? { place: o, label: state.focus ? state.focus.label : "where you are", me: !state.focus } : { place: null, label: null };
     }
     if (out.place && nearestCity(out.place).d > FAR_AWAY_KM) out = { place: null, label: null, far: true };
     return out;
@@ -1495,16 +1501,34 @@
     return "🚶 about " + mins + " min walk";
   }
 
-  // Walking directions in Google Maps (no key). On phones Google takes up to 3 stops between
-  // the start and the finish, so a 5-bar crawl starts at the first bar instead of where you are.
+  // Walking directions in Google Maps (no key): from the starting point to the first bar, then on
+  // to each of the others. Starting from "where you are" leaves the start out, so Google uses the
+  // phone's location. With no starting point, the route starts at the first bar.
+  function mapsPlace(v) { return v.name + ", " + v.area + " " + CITIES[v.city].state; }
+
+  function startPlace(start) {
+    if (!start.place || start.me) return null;
+    if (start.bar) return mapsPlace(start.bar);
+    return start.place.lat.toFixed(5) + "," + start.place.lon.toFixed(5);
+  }
+
   function crawlLink(stops) {
-    var place = function (s) { return s.v.name + ", " + s.v.area + " " + CITIES[s.v.city].state; };
-    var list = stops.slice();
+    var start = crawlStart();
+    var list = stops.map(function (s) { return mapsPlace(s.v); });
+    var from = startPlace(start);
+    // The first bar is the starting point itself (a searched bar), or there's no starting point.
+    if (!start.place || (stops[0].walk != null && stops[0].walk <= 0.05)) from = start.me ? null : list.shift();
     var url = "https://www.google.com/maps/dir/?api=1&travelmode=walking";
-    if (list.length > 4) url += "&origin=" + encodeURIComponent(place(list.shift()));
-    url += "&destination=" + encodeURIComponent(place(list.pop()));
-    if (list.length) url += "&waypoints=" + encodeURIComponent(list.map(place).join("|"));
+    if (from) url += "&origin=" + encodeURIComponent(from);
+    url += "&destination=" + encodeURIComponent(list.pop());
+    if (list.length) url += "&waypoints=" + encodeURIComponent(list.join("|"));
     return url;
+  }
+
+  // Walking directions for one leg: from the previous stop (or the start) to this bar.
+  function legLink(fromText, v) {
+    return "https://www.google.com/maps/dir/?api=1&travelmode=walking" +
+      (fromText ? "&origin=" + encodeURIComponent(fromText) : "") + "&destination=" + encodeURIComponent(mapsPlace(v));
   }
 
   // "Start from": type a suburb, street or bar (or tap 📍 Me). Typing here doesn't redraw the
@@ -1639,10 +1663,28 @@
     }
     box.appendChild(el("p", "crawl-msg", intro));
 
-    var ol = el("ol", "crawl-stops");
-    stops.forEach(function (s) {
+    // The starting point, then each bar, with a tap-able walk between them.
+    var firstIsStart = stops[0].walk != null && stops[0].walk <= 0.05;
+    var showStart = start.place && !(start.bar && firstIsStart);
+    if (showStart) {
+      var startRow = el("div", "crawl-row crawl-start");
+      startRow.appendChild(el("span", "crawl-pin", "📍"));
+      startRow.appendChild(el("span", "crawl-time", "Start"));
+      startRow.appendChild(el("span", "crawl-name", start.me ? "Where you are" : start.label));
+      box.appendChild(startRow);
+    }
+    var ol = el("ol", "crawl-stops" + (showStart ? " from-start" : ""));
+    var prev = startPlace(start);
+    stops.forEach(function (s, i) {
       var li = el("li");
-      if (s.walk != null && s.walk > 0.05) li.appendChild(el("span", "crawl-walk", walkText(s.walk)));
+      if (s.walk != null && s.walk > 0.05) {
+        var walk = el("a", "crawl-walk", walkText(s.walk) + " →");
+        walk.href = legLink(i === 0 ? prev : mapsPlace(stops[i - 1].v), s.v);
+        walk.target = "_blank";
+        walk.rel = "noopener";
+        walk.setAttribute("aria-label", "Walking directions to " + s.v.name);
+        li.appendChild(walk);
+      }
       var row = el("div", "crawl-row");
       row.appendChild(el("span", "crawl-time", arrival(s.v, s.at)));
       var info = el("div");
@@ -1669,6 +1711,7 @@
       var text = "🍻 Bar crawl!\n" + stops.map(function (s, i) {
         return (i + 1) + ". " + arrival(s.v, s.at) + " · " + s.v.name + " (" + s.v.area + "): " + s.v.deal;
       }).join("\n") + "\n\n🗺️ Route: " + crawlLink(stops);
+      if (start.place && !start.me && !firstIsStart) text = "📍 Start: " + start.label + "\n" + text;
       sendText("Bar crawl", text, location.origin + location.pathname);
     });
     actions.appendChild(send);
