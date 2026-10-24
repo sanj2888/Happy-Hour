@@ -654,9 +654,8 @@
   </div>
 
   <div class="panel" id="now-panel">
-    <div class="chips" role="group" aria-label="Where">
-      <button class="chip focus-chip" id="focus-chip" aria-pressed="true" hidden></button>
-      <button class="chip" data-place="near" aria-pressed="false">📍 Near me</button>
+    <div class="chips" id="where-row" role="group" aria-label="Where" hidden>
+      <button class="chip focus-chip" id="focus-chip" aria-pressed="true"></button>
     </div>
     <div class="seg seg-full seg-show" role="group" aria-label="Show">
       <button type="button" data-show="all" aria-pressed="false">🍺 All pubs &amp; bars</button>
@@ -996,7 +995,7 @@
     } catch (e) {}
   }
 
-  // Where distances are measured from: a searched place, or you (with Near me on).
+  // Where distances are measured from: a searched place, or you.
   function origin() {
     if (state.focus) return state.focus;
     return state.place === "near" && state.me ? state.me : null;
@@ -1337,15 +1336,14 @@
 
   function markNowButtons() {
     placeNote();
+    // The place chip: a searched place, or a city opened from a shared bar link. ✕ goes back to you.
     var fc = document.getElementById("focus-chip");
-    fc.hidden = !state.focus;
-    if (state.focus) {
-      fc.textContent = "📍 " + state.focus.label + " ✕";
-      fc.setAttribute("aria-label", "Showing near " + state.focus.label + ". Tap to clear.");
+    var label = state.focus ? state.focus.label : state.place !== "near" ? state.place : null;
+    document.getElementById("where-row").hidden = !label;
+    if (label) {
+      fc.textContent = "📍 " + label + " ✕";
+      fc.setAttribute("aria-label", "Showing near " + label + ". Tap to go back to your location.");
     }
-    document.querySelectorAll("[data-place]").forEach(function (b) {
-      b.setAttribute("aria-pressed", String(!state.focus && b.dataset.place === state.place));
-    });
     document.querySelectorAll("[data-when]").forEach(function (b) {
       b.setAttribute("aria-pressed", String(b.dataset.when === state.when));
     });
@@ -1355,7 +1353,7 @@
 
   // The happy hours matching the Nearby filters, best first.
   // With soon set, the ones starting within the hour instead.
-  // With a place (Near me or a search), only happy hours within the chosen distance, unless anyDistance.
+  // With a place (your location or a search), only happy hours within the chosen distance, unless anyDistance.
   function nowRows(soon, anyDistance) {
     var c = city();
     var from = origin();
@@ -1377,7 +1375,7 @@
         return true;
       });
 
-    // Near me or a searched place: closest first, always. Otherwise on now (ending soonest) first, then starting soonest.
+    // Your location or a searched place: closest first, always. Otherwise on now (ending soonest) first, then starting soonest.
     rows.sort(function (a, b) {
       if (useDistance) return a.d - b.d;
       if (a.s.rank !== b.s.rank) return a.s.rank - b.s.rank;
@@ -1395,7 +1393,10 @@
     var box = el("li", "empty");
     box.appendChild(el("div", "big", "📍"));
     box.appendChild(el("h2", "display", "Where are you?"));
-    box.appendChild(el("p", null, noteText || "Tap Near me to use your location, or search a suburb above."));
+    box.appendChild(el("p", null, noteText || "Use your location, or search a suburb above."));
+    var me = el("button", "chip", "📍 Use my location");
+    me.addEventListener("click", function () { state.place = "near"; save(); locate(); render(); });
+    box.appendChild(me);
     var row = el("div", "chips city-picks");
     Object.keys(CITIES).forEach(function (c) {
       var b = el("button", "chip", "📍 " + c + " CBD");
@@ -1765,7 +1766,7 @@
     var start = crawlStart();
     if (start.waiting) {
       box.appendChild(el("p", "crawl-msg", locating ? "Finding where you are…"
-        : noteText ? noteText.replace("tap Near me again", "tap 📍 Me again") : "Turn on location to start from where you are."));
+        : noteText ? noteText.replace("tap Use my location below", "tap 📍 Me") : "Turn on location to start from where you are."));
       return box;
     }
     var where = start.label || (state.savedOnly ? "your saved spots" : city());
@@ -2012,7 +2013,7 @@
     return venues.some(function (v) { return plainName(v.name) === n && km(v, place) < 1.5; });
   }
 
-  // Where "All pubs & bars" looks: a searched place, you (Near me), or the middle of the chosen city.
+  // Where "All pubs & bars" looks: a searched place, you, or the middle of a city (picked from a shared bar link).
   function allCenter() {
     if (state.focus) return { lat: state.focus.lat, lon: state.focus.lon };
     if (state.place === "near") return state.me;
@@ -2402,7 +2403,7 @@
   function placeNote() {
     if (state.show === "all" && state.tab !== "plan") {
       if (state.focus) setNote("Around " + state.focus.label + ", closest first. 🔥 = happy hour.");
-      else if (state.place !== "near") setNote("Around the middle of " + state.place + ". Tap Near me or search a suburb to look somewhere else.");
+      else if (state.place !== "near") setNote("Around the middle of " + state.place + ". Search a suburb to look somewhere else.");
       else if (!state.me) setNote(locating ? "Finding where you are…" : noteText);
       else setNote("Near you, closest first. 🔥 = happy hour.");
       return;
@@ -2441,10 +2442,10 @@
       var iphone = /iPhone|iPad|iPod/.test(navigator.userAgent);
       if (err && err.code === 1) {
         noteText = (iphone
-          ? "Your phone is blocking location for this app. Open Settings > Privacy & Security > Location Services, make sure it's on, then tap Safari Websites and choose While Using the App. Then tap Near me again."
-          : "Your phone is blocking location for this app. Tap the icon to the left of the web address, choose Permissions (or Site settings) > Location > Allow, and check Location is on in your phone's settings. Then tap Near me again.");
+          ? "Your phone is blocking location for this app. Open Settings > Privacy & Security > Location Services, make sure it's on, then tap Safari Websites and choose While Using the App. Then tap Use my location below."
+          : "Your phone is blocking location for this app. Tap the icon to the left of the web address, choose Permissions (or Site settings) > Location > Allow, and check Location is on in your phone's settings. Then tap Use my location below.");
       } else {
-        noteText = "We couldn't find where you are just now. Check Location is on in your phone's settings, then tap Near me again.";
+        noteText = "We couldn't find where you are just now. Check Location is on in your phone's settings, then tap Use my location below.";
       }
       render();
     }, { enableHighAccuracy: false, timeout: 20000, maximumAge: 300000 });
@@ -2480,15 +2481,6 @@
     setNote("Tonight's pick: " + pick.v.name + " 🎉");
   }
 
-  document.querySelectorAll("[data-place]").forEach(function (b) {
-    b.addEventListener("click", function () {
-      state.place = b.dataset.place;
-      clearFocus();
-      save();
-      if (state.place === "near") locate();
-      render();
-    });
-  });
   document.querySelectorAll("[data-when]").forEach(function (b) {
     b.addEventListener("click", function () {
       state.when = b.dataset.when;
@@ -2520,10 +2512,13 @@
       if (box) window.scrollTo({ top: box.getBoundingClientRect().top + window.scrollY - 80, behavior: "smooth" });
     }
   });
+  // ✕ on the place chip: back to your own location.
   document.getElementById("focus-chip").addEventListener("click", function () {
     state.focus = null;
+    state.place = "near";
+    save();
     searchEl.value = ""; typed = ""; state.query = "";
-    if (state.place === "near" && !state.me) locate();
+    if (!state.me) locate();
     render();
   });
   document.querySelectorAll("[data-tab]").forEach(function (b) {
@@ -2901,7 +2896,7 @@
       if (state.cheap) bits.push("💸 $10 max");
       bits.unshift(planCount + (planCount === 1 ? " spot" : " spots"));
     } else {
-      bits.push(state.focus ? "📍 " + state.focus.label : state.place === "near" ? "📍 Near me" : state.place);
+      bits.push(state.focus ? "📍 " + state.focus.label : state.place === "near" ? "📍 Near you" : state.place);
       if (state.show === "all") {
         bits.unshift(document.getElementById("count").textContent || "Pubs & bars");
         if (state.query) bits.push("\u201c" + state.query + "\u201d");
