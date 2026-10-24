@@ -1,0 +1,22 @@
+# Temporary diagnostic, deleted after use.
+name: Diagnose Templestowe search
+on:
+  push:
+    branches: [diag/templestowe]
+permissions:
+  contents: read
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm i --no-save playwright@1.48.2 && npx playwright install --with-deps chromium
+      - run: node .github/scripts/diag-templestowe.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: screenshot
+          path: templestowe.png
