@@ -615,7 +615,7 @@
 
 <div class="wrap">
   <div class="search-box search-main">
-    <input class="search" id="search" type="search" placeholder="🔍 Type a suburb or a bar" aria-label="Type a suburb or a bar" autocomplete="off" enterkeyhint="search" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="suggest">
+    <input class="search" id="search" type="search" placeholder="🔍 Search a suburb, street or pub" aria-label="Search a suburb, street or pub" autocomplete="off" enterkeyhint="search" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="suggest">
     <ul class="suggest" id="suggest" role="listbox" hidden></ul>
   </div>
 
@@ -2367,7 +2367,7 @@
       .slice(0, 3)
       .forEach(function (a) {
         if (a.area.toLowerCase() === q) exactArea = true;
-        out.push({ icon: "📍", name: a.area, sub: a.city + " · " + a.n + (a.n === 1 ? " happy hour" : " happy hours") + " · and nearby",
+        out.push({ icon: "📍", name: a.area, sub: a.city + (placeSearch() ? " · every pub and bar around it" : " · " + a.n + (a.n === 1 ? " happy hour" : " happy hours") + " · and nearby"),
           value: a.area, place: { label: a.area, lat: a.lat, lon: a.lon } });
       });
     // Hospitality groups, e.g. typing "meri" offers all the Merivale venues.
@@ -2381,12 +2381,25 @@
       .sort(function (a, b) { return rank(a.name, a.city) - rank(b.name, b.city) || a.name.localeCompare(b.name); })
       .slice(0, 6 - out.length)
       .forEach(function (v) {
-        out.push({ icon: "🍸", name: v.name, sub: v.area + (v.group ? " · " + v.group : "") + " · " + v.deal, value: v.name, bar: v });
+        out.push({ icon: "🍸", name: v.name, sub: v.area + (v.group ? " · " + v.group : "") + " · 🔥 " + v.deal, value: v.name, bar: v });
       });
-    if (q.length >= 3 && !exactArea) {
-      out.push({ icon: "🧭", name: "Happy hours near \u201c" + query + "\u201d", sub: "Any suburb or street in Sydney or Melbourne", value: query, lookup: true });
+    // Pubs and bars from OpenStreetMap around the current place (All pubs & bars only).
+    if (placeSearch()) {
+      var center = allCenter();
+      others.list
+        .filter(function (o) { return o.name.toLowerCase().indexOf(q) >= 0; })
+        .slice(0, Math.max(0, 7 - out.length))
+        .forEach(function (o) {
+          out.push({ icon: "🍺", name: o.name, sub: (OTHER_TYPES[o.type] || "🍸 Bar").slice(3) + (center ? " · " + otherDistance(km(center, o)) : ""),
+            value: o.name, place: { label: o.name, lat: o.lat, lon: o.lon }, pub: true });
+        });
     }
-    if (!out.some(function (o) { return o.bar; }) && q.length >= 3) {
+    if (q.length >= 3 && !exactArea) {
+      out.push(placeSearch()
+        ? { icon: "🧭", name: "Pubs & bars near \u201c" + query + "\u201d", sub: "Any suburb, street or town in Australia", value: query, lookup: true }
+        : { icon: "🧭", name: "Happy hours near \u201c" + query + "\u201d", sub: "Any suburb or street in Sydney or Melbourne", value: query, lookup: true });
+    }
+    if (!out.some(function (o) { return o.bar || o.pub; }) && q.length >= 3) {
       out.push({ icon: "🗺️", name: "Find \u201c" + query + "\u201d on Google Maps", sub: "Not in our happy hour list yet", url: googleSearch(query) });
     }
     return out;
@@ -2425,7 +2438,12 @@
     setNote("Finding " + text + "…");
     findPlace(text)
       .then(function (place) {
-        if (!place) { setNote("Couldn't find \u201c" + text + "\u201d. Try a suburb name."); return; }
+        if (!place) {
+          // Not a place: in All pubs & bars, look for pubs with that name nearby instead.
+          if (placeSearch()) { state.query = text; render(); return; }
+          setNote("Couldn't find \u201c" + text + "\u201d. Try a suburb name.");
+          return;
+        }
         searchEl.value = place.label; typed = place.label;
         focusOn(place);
       })
@@ -2478,6 +2496,9 @@
       focusOn(sg.place);
       return;
     }
+    // All pubs & bars: a bar shows every pub around it; a group (e.g. Merivale) switches to Happy hours.
+    if (sg.bar && placeSearch()) { focusOn({ label: sg.bar.name, lat: sg.bar.lat, lon: sg.bar.lon }); return; }
+    if (sg.group) state.show = "hh";
     state.focus = null;
     state.query = sg.value;
     if (sg.group) { state.when = "all"; save(); render(); return; }
@@ -2521,11 +2542,20 @@
       searchEl.selectionEnd === searchEl.value.length;
   }
 
+  // All pubs & bars searches places: typing only shows suggestions, and the list moves when you
+  // pick one (or press Enter). Happy hours and Plan ahead filter the list by name as you type.
+  function placeSearch() { return state.show === "all" && state.tab !== "plan"; }
+
   searchEl.addEventListener("input", function (e) {
     typed = e.target.value;
-    state.focus = null;
-    state.query = typed.trim();
-    render();
+    if (!placeSearch()) {
+      state.focus = null;
+      state.query = typed.trim();
+      render();
+    } else if (!typed.trim() && state.query) {
+      state.query = "";
+      render();
+    }
     showSuggestions();
     autofill(e);
   });
@@ -2548,8 +2578,10 @@
       var bar = venues.filter(function (v) { return v.name.toLowerCase() === text.toLowerCase(); })[0];
       hideSuggestions();
       searchEl.blur();
+      var pub = placeSearch() && others.list.filter(function (o) { return o.name.toLowerCase() === text.toLowerCase(); })[0];
       if (bar) { suggestions = [{ value: bar.name, bar: bar }]; choose(0); }
       else if (hit) focusOn({ label: hit.area, lat: hit.lat, lon: hit.lon });
+      else if (pub) focusOn({ label: pub.name, lat: pub.lat, lon: pub.lon });
       else if (text.length >= 3) lookUp(text);
       return;
     }
