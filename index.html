@@ -384,11 +384,29 @@
     box-shadow: var(--glow-cyan);
     padding: 16px 18px;
   }
-  .crawl h2 { margin: 0; font-size: 17px; }
-  .crawl p { margin: 6px 0 0; color: var(--muted); font-size: 14px; }
-  .crawl ol { margin: 10px 0 0; padding-left: 22px; font-size: 14px; font-weight: 600; }
-  .crawl ol span { color: var(--muted); font-weight: 500; }
+  .crawl-top { display: flex; justify-content: space-between; align-items: center; }
+  .crawl h2 { margin: 0; font-size: 18px; }
+  .crawl-q { margin: 10px 0 8px; font-size: 14px; font-weight: 700; }
+  .crawl-msg { margin: 12px 0 0; color: var(--muted); font-size: 14px; }
+  .crawl-stops { list-style: none; margin: 12px 0 0; padding: 0; counter-reset: stop; }
+  .crawl-stops li { counter-increment: stop; }
+  .crawl-walk { display: block; margin: 2px 0 2px 26px; padding: 4px 0 4px 16px; border-left: 2px dashed var(--chip-line); color: var(--muted); font-size: 12px; }
+  .crawl-row { display: flex; gap: 10px; align-items: flex-start; }
+  .crawl-row::before {
+    content: counter(stop); flex: none; width: 24px; height: 24px; border-radius: 50%;
+    display: grid; place-items: center; background: var(--sunset); color: #1a0b2e;
+    font: 800 12px/1 Unbounded, Inter, system-ui, sans-serif;
+  }
+  .crawl-time { flex: none; width: 62px; color: var(--cyan); font-weight: 700; font-size: 14px; line-height: 24px; }
+  .crawl-name { display: block; color: var(--text); font-weight: 700; font-size: 15px; line-height: 24px; text-decoration: none; }
+  .crawl-deal { display: block; color: var(--muted); font-size: 13px; line-height: 1.35; }
   .crawl .actions { flex-wrap: wrap; }
+  .crawl-btn {
+    flex: none; border: 1.5px solid var(--cyan); border-radius: 999px; padding: 7px 12px;
+    background: rgba(45, 226, 255, .1); color: #e8fcff;
+    font: 800 13px/1.2 Inter, system-ui, sans-serif; cursor: pointer; box-shadow: var(--glow-cyan);
+  }
+  .crawl-btn[aria-pressed="true"] { background: rgba(45, 226, 255, .28); }
 
   /* ---- Add to home screen tip ---- */
   .install {
@@ -400,6 +418,42 @@
   .install-text { flex: 1; margin: 0; font-size: 14px; color: var(--muted); line-height: 1.35; }
   .install-text b { color: var(--text); }
   .install .chip { flex: none; }
+
+  /* ---- Share the app / Save as an app ---- */
+  .hero-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  .hero-btn {
+    border: 1.5px solid rgba(255, 255, 255, .28); background: rgba(255, 255, 255, .08); color: #fff;
+    border-radius: 999px; padding: 7px 12px; font: 700 13px/1.2 Inter, system-ui, sans-serif; cursor: pointer;
+  }
+  .hero-btn:active { transform: scale(.96); }
+  .link-btn { border: 0; background: none; padding: 0; color: var(--pink); font: inherit; font-weight: 600; cursor: pointer; }
+  .sheet {
+    width: min(480px, calc(100% - 24px)); max-height: calc(100% - 40px); overflow-y: auto;
+    border: 1.5px solid var(--pink); border-radius: 24px;
+    background: var(--card); color: var(--text);
+    box-shadow: var(--glow-pink), 0 20px 60px rgba(0, 0, 0, .6);
+    padding: 20px;
+  }
+  .sheet::backdrop { background: rgba(5, 2, 10, .7); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+  .sheet-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .sheet h2 { margin: 0; font-size: 20px; }
+  .sheet-lead { margin: 10px 0 14px; color: var(--muted); font-size: 15px; }
+  .sheet-seg { display: inline-flex; height: 40px; }
+  .steps { margin: 16px 0 0; padding: 0; list-style: none; counter-reset: step; display: grid; gap: 12px; }
+  .steps li { counter-increment: step; position: relative; padding: 2px 0 0 38px; min-height: 26px; font-size: 15px; line-height: 1.45; }
+  .steps li::before {
+    content: counter(step); position: absolute; left: 0; top: 0; width: 26px; height: 26px; border-radius: 50%;
+    display: grid; place-items: center; background: var(--sunset); color: #1a0b2e;
+    font: 800 13px/1 Unbounded, Inter, system-ui, sans-serif;
+  }
+  .key {
+    display: inline-grid; place-items: center; width: 24px; height: 24px; vertical-align: -6px;
+    border: 1.5px solid var(--cyan); border-radius: 7px; color: var(--cyan); font-size: 15px;
+  }
+  .key svg { width: 15px; height: 15px; }
+  .sheet-note { margin: 14px 0 0; color: var(--muted); font-size: 13px; }
+  .sheet-install { margin-top: 16px; cursor: pointer; font-family: inherit; }
+  .sheet-share { margin-top: 18px; }
   .install-x { flex: none; border: 0; background: none; color: var(--muted); font-size: 16px; padding: 6px; cursor: pointer; }
 
   /* ---- Map pin groups ---- */
@@ -507,6 +561,10 @@
     <div class="logo"><span aria-hidden="true">🍻</span> Happy Hour</div>
     <h1 class="display">Thirsty?</h1>
     <p>Type a suburb or a bar, or tap Near me.</p>
+    <div class="hero-actions">
+      <button class="hero-btn" type="button" data-share-app>📤 Share the app</button>
+      <button class="hero-btn" type="button" data-get-app>📲 Save as an app</button>
+    </div>
   </div>
 </header>
 
@@ -575,6 +633,7 @@
 
   <div class="results-head">
     <p class="note" id="note" aria-live="polite"></p>
+    <button class="crawl-btn" id="crawl-btn" type="button" aria-pressed="false">🚶 Crawl</button>
     <button class="pick" id="surprise" type="button">🎲 Pick for me</button>
   </div>
   <div class="map-wrap" id="map-wrap" hidden>
@@ -589,14 +648,16 @@
   <ul class="list" id="list"></ul>
   <div class="install" id="install" hidden>
     <span class="install-icon" aria-hidden="true">📲</span>
-    <p class="install-text" id="install-text"></p>
-    <button class="chip" id="install-add" type="button" hidden>Add</button>
+    <p class="install-text"><b>Get the app.</b> Save Happy Hour to your home screen. It's free and opens in a tap.</p>
+    <button class="chip" type="button" data-get-app>Show me</button>
     <button class="install-x" id="install-x" type="button" aria-label="Hide this tip">✕</button>
   </div>
 
   <footer>
     18+ only. Drink responsibly and check deals with the bar before you go.<br>
-    Know a happy hour we're missing? <a href="https://github.com/sanj2888/Happy-Hour/issues/new?title=Happy%20hour%20suggestion" target="_blank" rel="noopener">Spill the tea</a>
+    Know a happy hour we're missing? <a href="https://github.com/sanj2888/Happy-Hour/issues/new?title=Happy%20hour%20suggestion" target="_blank" rel="noopener">Spill the tea</a><br>
+    <button class="link-btn" type="button" data-share-app>📤 Share the app</button> ·
+    <button class="link-btn" type="button" data-get-app>📲 Save as an app</button>
   </footer>
 </div>
 
@@ -606,6 +667,38 @@
 </button>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<dialog class="sheet" id="get-app" aria-labelledby="get-app-title">
+  <div class="sheet-top">
+    <h2 class="display" id="get-app-title">📲 Save as an app</h2>
+    <button class="install-x" type="button" data-close aria-label="Close">✕</button>
+  </div>
+  <p class="sheet-lead">Put Happy Hour on your home screen like any other app. It's free, there's nothing to download from an app store, and it takes about 10 seconds.</p>
+  <div class="seg sheet-seg" role="group" aria-label="Your phone">
+    <button type="button" data-phone="iphone" aria-pressed="true">iPhone</button>
+    <button type="button" data-phone="android" aria-pressed="false">Android</button>
+  </div>
+  <div data-steps="iphone">
+    <ol class="steps">
+      <li>Open this page in <b>Safari</b>.</li>
+      <li>Tap the <b>Share</b> button <span class="key" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 8l5-5 5 5"/><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg></span>. On newer iPhones, tap <b>•••</b> at the bottom first, then <b>Share</b>.</li>
+      <li>Scroll down and tap <b>Add to Home Screen</b> <span class="key" aria-hidden="true">⊞</span>.</li>
+      <li>Tap <b>Add</b>. Look for the 🍻 <b>Happy Hour</b> icon on your home screen.</li>
+    </ol>
+    <p class="sheet-note">Using Chrome on iPhone? Tap the Share button in the address bar, then <b>Add to Home Screen</b>.</p>
+  </div>
+  <div data-steps="android" hidden>
+    <button class="go sheet-install" type="button" id="install-now" hidden>Install now →</button>
+    <ol class="steps">
+      <li>Open this page in <b>Chrome</b>.</li>
+      <li>Tap the <b>⋮</b> menu at the top right.</li>
+      <li>Tap <b>Add to Home screen</b> (it may say <b>Install app</b>).</li>
+      <li>Tap <b>Install</b> (or <b>Add</b>). Look for the 🍻 <b>Happy Hour</b> icon on your home screen.</li>
+    </ol>
+    <p class="sheet-note">Using Samsung Internet? Tap <b>☰</b> at the bottom, then <b>Add page to</b> &gt; <b>Home screen</b>.</p>
+  </div>
+  <button class="chip sheet-share" type="button" data-share-app>📤 Share the app with friends</button>
+</dialog>
 
 <script src="venues.js"></script>
 <script>
@@ -627,6 +720,7 @@
     planCity: "Sydney", area: "all", day: "any", drink: null, savedOnly: false,
     focus: null, // a searched place: { label, lat, lon }
     late: false, cheap: false,
+    crawl: false, crawlStops: 3, // the bar crawl planner (open or not, and how many bars)
   };
   try {
     var saved = JSON.parse(localStorage.getItem(STORE) || "{}");
@@ -868,6 +962,8 @@
     document.querySelectorAll("[data-cheap]").forEach(function (b) { b.setAttribute("aria-pressed", String(state.cheap)); });
     document.getElementById("now-panel").hidden = state.tab === "plan";
     document.getElementById("surprise").hidden = state.tab === "plan";
+    document.getElementById("crawl-btn").hidden = state.tab !== "now";
+    document.getElementById("crawl-btn").setAttribute("aria-pressed", String(state.crawl));
     document.getElementById("plan-panel").hidden = state.tab !== "plan";
     document.getElementById("map-wrap").hidden = state.tab !== "map";
     if (state.tab === "plan") renderPlan();
@@ -1180,6 +1276,7 @@
     shown = rows;
 
     listEl.textContent = "";
+    if (state.crawl) listEl.appendChild(crawlBox());
     if (!rows.length && !soon.length) {
       var empty = el("li", "empty");
       var isNow = state.when === "now";
@@ -1222,7 +1319,6 @@
       return;
     }
 
-    if (state.savedOnly && rows.length >= 2) listEl.appendChild(crawlBox(rows));
     rows.forEach(function (r) {
       listEl.appendChild(card(r.v, r.s, r.d));
     });
@@ -1234,60 +1330,184 @@
     }
   }
 
-  // ----- Bar crawl: saved spots in an easy walking order -----
+  // ----- Bar crawl planner: pick how many stops, get a timed walking route -----
+  // Each stop is about 45 minutes. A bar only makes the plan if its happy hour is on when you'd
+  // get there, and the next bar is always a short walk from the last one.
 
-  var CRAWL_STOPS = 5; // Google Maps on phones takes a start, a finish and up to 3 stops between
+  var STOP_MINS = 45;    // time at each bar, including the walk to the next
+  var HOP_KM = 1.5;      // furthest walk between two bars
+  var FIRST_HOP_KM = 3;  // furthest first bar from you (or the searched suburb)
+  var WALK_KMH = 4.5;
+  var crawl = { key: null, plan: null, shuffle: 0 };
 
-  // Starts nearest you (or with the happy hour on soonest), then always walks to the closest next spot.
-  function crawlOrder(rows) {
-    var left = rows.slice(0, 50), out = [];
-    var at = origin();
-    if (!at) { out.push(left.shift()); at = out[0].v; }
-    while (left.length && out.length < CRAWL_STOPS) {
-      var best = 0;
-      for (var i = 1; i < left.length; i++) if (km(at, left[i].v) < km(at, left[best].v)) best = i;
-      out.push(left.splice(best, 1)[0]);
-      at = out[out.length - 1].v;
-    }
-    return out;
+  // True if the happy hour is on this many minutes from now.
+  function onAt(v, minsFromNow) {
+    var now = cityNow(v.city);
+    var t = now.mins + minsFromNow;
+    var day = (now.day + Math.floor(t / 1440)) % 7, m = t % 1440, before = (day + 6) % 7;
+    return v.slots.some(function (s) {
+      var overnight = s.to <= s.from;
+      if (s.day === day && m >= s.from && (overnight || m < s.to)) return true;
+      return overnight && s.day === before && m < s.to;
+    });
   }
 
-  // Walking directions through the stops, starting from wherever the phone is.
+  // Still on at arrival and for at least 20 minutes after.
+  function goodAt(v, t) { return onAt(v, t) && onAt(v, t + 20); }
+
+  // Picks one of the best few, so "Shuffle" gives a different plan.
+  function choose3(list, shuffle) {
+    if (!shuffle) return list[0];
+    return list[Math.floor(Math.random() * Math.min(3, list.length))];
+  }
+
+  // A searched bar name: the crawl starts there.
+  function searchedBar() {
+    var q = state.query.toLowerCase();
+    return q ? venues.filter(function (v) { return v.name.toLowerCase() === q; })[0] : null;
+  }
+
+  function planCrawl(n, shuffle) {
+    var c = city(), from = searchedBar() || origin();
+    if (from && nearestCity(from).d > FAR_AWAY_KM) from = null;
+    var pool = venues.filter(function (v) {
+      if (v.city !== c || !passesFilters(v)) return false;
+      if (state.savedOnly && !isSaved(v)) return false;
+      return !from || km(from, v) <= FIRST_HOP_KM + HOP_KM * n;
+    });
+    // Start now if something nearby is on, otherwise when the first nearby one starts (today only).
+    var reach = pool.filter(function (v) { return !from || km(from, v) <= FIRST_HOP_KM; });
+    var startIn = null;
+    for (var t = 0; t <= 6 * 60 && startIn == null; t += 15) {
+      if (reach.some(function (v) { return goodAt(v, t); })) startIn = t;
+    }
+    if (startIn == null) return { stops: [], startIn: null };
+
+    var stops = [], at = from;
+    for (var i = 0; i < n; i++) {
+      var when = startIn + i * STOP_MINS;
+      var options = pool.filter(function (v) {
+        if (stops.some(function (s) { return s.v === v; }) || !goodAt(v, when)) return false;
+        return !at || km(at, v) <= (i === 0 ? FIRST_HOP_KM : HOP_KM);
+      });
+      if (!options.length) break;
+      if (at) {
+        options.sort(function (a, b) { return km(at, a) - km(at, b); });
+      } else {
+        // Nowhere to start from: begin where the most bars are on, so the walk stays short.
+        var busy = function (v) { return pool.filter(function (o) { return km(v, o) <= HOP_KM && onAt(o, when + STOP_MINS); }).length; };
+        options.sort(function (a, b) { return busy(b) - busy(a); });
+      }
+      var pick = choose3(options, shuffle);
+      stops.push({ v: pick, at: when, walk: at ? km(at, pick) : null });
+      at = pick;
+    }
+    return { stops: stops, startIn: startIn };
+  }
+
+  // Keeps the same plan between screen refreshes until something changes.
+  function currentPlan() {
+    var from = origin();
+    var k = [state.crawlStops, city(), from ? from.lat.toFixed(3) + "," + from.lon.toFixed(3) : "", state.drink, state.late,
+      state.cheap, state.savedOnly, state.query, crawl.shuffle, Math.floor(Date.now() / 6e5)].join("|");
+    if (crawl.key !== k) { crawl.key = k; crawl.plan = planCrawl(state.crawlStops, crawl.shuffle > 0); }
+    return crawl.plan;
+  }
+
+  function arrival(v, minsFromNow) {
+    var m = cityNow(v.city).mins + minsFromNow;
+    return clock(Math.round(m / 5) * 5);
+  }
+
+  function walkText(d) {
+    var mins = Math.max(2, Math.round(d / WALK_KMH * 60));
+    return "🚶 about " + mins + " min walk";
+  }
+
+  // Walking directions in Google Maps (no key). On phones Google takes up to 3 stops between
+  // the start and the finish, so a 5-bar crawl starts at the first bar instead of where you are.
   function crawlLink(stops) {
-    var place = function (r) { return r.v.name + ", " + r.v.area + " " + CITIES[r.v.city].state; };
-    var url = "https://www.google.com/maps/dir/?api=1&travelmode=walking&destination=" + encodeURIComponent(place(stops[stops.length - 1]));
-    if (stops.length > 1) url += "&waypoints=" + encodeURIComponent(stops.slice(0, -1).map(place).join("|"));
+    var place = function (s) { return s.v.name + ", " + s.v.area + " " + CITIES[s.v.city].state; };
+    var list = stops.slice();
+    var url = "https://www.google.com/maps/dir/?api=1&travelmode=walking";
+    if (list.length > 4) url += "&origin=" + encodeURIComponent(place(list.shift()));
+    url += "&destination=" + encodeURIComponent(place(list.pop()));
+    if (list.length) url += "&waypoints=" + encodeURIComponent(list.map(place).join("|"));
     return url;
   }
 
-  function crawlBox(rows) {
-    var stops = crawlOrder(rows);
+  function crawlBox() {
+    var plan = currentPlan();
     var box = el("li", "crawl");
-    box.appendChild(el("h2", "display", "🚶 Bar crawl"));
-    box.appendChild(el("p", null, rows.length > CRAWL_STOPS
-      ? "Your first " + CRAWL_STOPS + " saved spots in an easy walking order."
-      : "Your saved spots in an easy walking order."));
-    var ol = el("ol");
-    stops.forEach(function (r) {
-      var li = el("li", null, r.v.name);
-      li.appendChild(el("span", null, " · " + r.v.area + " · " + r.s.label));
+    var top = el("div", "crawl-top");
+    top.appendChild(el("h2", "display", "🚶 Bar crawl"));
+    var x = el("button", "install-x", "✕");
+    x.setAttribute("aria-label", "Close the bar crawl");
+    x.addEventListener("click", function () { state.crawl = false; render(); });
+    top.appendChild(x);
+    box.appendChild(top);
+
+    box.appendChild(el("p", "crawl-q", "How many bars?"));
+    var counts = el("div", "chips");
+    [2, 3, 4, 5].forEach(function (n) {
+      var b = el("button", "chip", String(n));
+      b.setAttribute("aria-pressed", String(state.crawlStops === n));
+      b.addEventListener("click", function () { state.crawlStops = n; crawl.shuffle = 0; render(); });
+      counts.appendChild(b);
+    });
+    box.appendChild(counts);
+
+    var stops = plan.stops;
+    var bar = searchedBar(), from = bar || origin();
+    var where = state.savedOnly ? "your saved spots" : bar ? bar.name : from ? (state.focus ? state.focus.label : "you") : city();
+    if (!stops.length) {
+      box.appendChild(el("p", "crawl-msg", "No happy hours left today near " + where +
+        ". Try another suburb, fewer filters, or the Plan ahead tab."));
+      return box;
+    }
+    var intro = (plan.startIn === 0 ? "Starts now" : "Starts at " + arrival(stops[0].v, plan.startIn)) +
+      (from ? ", near " + where : " in " + (state.savedOnly ? where : "the busiest part of " + city())) + ".";
+    if (stops.length < state.crawlStops) {
+      intro += " Only " + stops.length + (stops.length === 1 ? " bar" : " bars") + " in walking distance will still have happy hour on.";
+    }
+    box.appendChild(el("p", "crawl-msg", intro));
+
+    var ol = el("ol", "crawl-stops");
+    stops.forEach(function (s) {
+      var li = el("li");
+      if (s.walk != null && s.walk > 0.05) li.appendChild(el("span", "crawl-walk", walkText(s.walk)));
+      var row = el("div", "crawl-row");
+      row.appendChild(el("span", "crawl-time", arrival(s.v, s.at)));
+      var info = el("div");
+      var name = el("a", "crawl-name", s.v.name);
+      name.href = mapsLink(s.v);
+      name.target = "_blank";
+      name.rel = "noopener";
+      info.appendChild(name);
+      info.appendChild(el("span", "crawl-deal", s.v.area + " · " + s.v.deal));
+      row.appendChild(info);
+      li.appendChild(row);
       ol.appendChild(li);
     });
     box.appendChild(ol);
+
     var actions = el("div", "actions");
     var go = el("a", "go", "Walk the route →");
     go.href = crawlLink(stops);
     go.target = "_blank";
     go.rel = "noopener";
     actions.appendChild(go);
-    var send = el("button", "chip", "📤 Send to the group");
+    var send = el("button", "chip", "📤 Send");
     send.addEventListener("click", function () {
-      var text = "🍻 Bar crawl!\n" + stops.map(function (r, i) {
-        return (i + 1) + ". " + r.v.name + " (" + r.v.area + "): " + r.v.deal + ", " + hoursText(r.v);
+      var text = "🍻 Bar crawl!\n" + stops.map(function (s, i) {
+        return (i + 1) + ". " + arrival(s.v, s.at) + " · " + s.v.name + " (" + s.v.area + "): " + s.v.deal;
       }).join("\n") + "\n\n🗺️ Route: " + crawlLink(stops);
       sendText("Bar crawl", text, location.origin + location.pathname);
     });
     actions.appendChild(send);
+    var again = el("button", "chip", "🔀 Shuffle");
+    again.addEventListener("click", function () { crawl.shuffle++; render(); });
+    actions.appendChild(again);
     box.appendChild(actions);
     return box;
   }
@@ -1679,6 +1899,15 @@
     });
   });
   document.getElementById("surprise").addEventListener("click", surprise);
+  document.getElementById("crawl-btn").addEventListener("click", function () {
+    state.crawl = !state.crawl;
+    crawl.shuffle = 0;
+    render();
+    if (state.crawl) {
+      var box = listEl.querySelector(".crawl");
+      if (box) window.scrollTo({ top: box.getBoundingClientRect().top + window.scrollY - 80, behavior: "smooth" });
+    }
+  });
   document.getElementById("focus-chip").addEventListener("click", function () {
     state.focus = null;
     searchEl.value = ""; typed = ""; state.query = "";
@@ -2008,35 +2237,67 @@
   } else if (state.place === "near") locate();
   render();
 
-  // ----- "Add to your home screen" tip -----
-  // Android/Chrome offers a one-tap install; on iPhone it explains the Share menu steps.
-  // Hidden once installed or after tapping ✕.
+  // ----- Share the app, and "Save as an app" instructions -----
 
+  var APP_URL = location.origin + location.pathname;
+
+  function shareApp() {
+    var text = "🍻 Cheap drinks near you, right now. Happy hours in Sydney & Melbourne:";
+    if (navigator.share) {
+      navigator.share({ title: "Happy Hour", text: text, url: APP_URL }).catch(function () {});
+    } else if (navigator.clipboard) {
+      navigator.clipboard.writeText(APP_URL).then(function () { toast("Link copied 📋 Paste it to your friends"); },
+        function () { window.open("https://wa.me/?text=" + encodeURIComponent(text + " " + APP_URL), "_blank", "noopener"); });
+    } else {
+      window.open("https://wa.me/?text=" + encodeURIComponent(text + " " + APP_URL), "_blank", "noopener");
+    }
+  }
+  document.querySelectorAll("[data-share-app]").forEach(function (b) { b.addEventListener("click", shareApp); });
+
+  var sheet = document.getElementById("get-app");
+  var installPrompt = null; // Chrome on Android can install in one tap
+
+  function showPhone(phone) {
+    document.querySelectorAll("[data-phone]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.phone === phone)); });
+    document.querySelectorAll("[data-steps]").forEach(function (d) { d.hidden = d.dataset.steps !== phone; });
+  }
+  document.querySelectorAll("[data-phone]").forEach(function (b) {
+    b.addEventListener("click", function () { showPhone(b.dataset.phone); });
+  });
+  document.querySelectorAll("[data-get-app]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      showPhone(/Android/i.test(navigator.userAgent) ? "android" : "iphone");
+      document.getElementById("install-now").hidden = !installPrompt;
+      if (sheet.showModal) sheet.showModal(); else sheet.setAttribute("open", "");
+    });
+  });
+  sheet.querySelector("[data-close]").addEventListener("click", function () { sheet.close ? sheet.close() : sheet.removeAttribute("open"); });
+  // Tapping the dark area outside the box closes it.
+  sheet.addEventListener("click", function (e) { if (e.target === sheet && sheet.close) sheet.close(); });
+
+  // The tip under the list. Hidden once installed or after tapping ✕.
   var INSTALL_STORE = "happy-hour-install-hidden";
   var installBox = document.getElementById("install");
-  var installPrompt = null;
+  var installed = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone;
 
   function installHidden() {
-    if (window.matchMedia("(display-mode: standalone)").matches || navigator.standalone) return true;
+    if (installed) return true;
     try { return localStorage.getItem(INSTALL_STORE) === "1"; } catch (e) { return false; }
   }
-
-  function showInstall(text, canAdd) {
-    if (installHidden()) return;
-    document.getElementById("install-text").innerHTML = text;
-    document.getElementById("install-add").hidden = !canAdd;
-    installBox.hidden = false;
-  }
+  if (installed) document.querySelectorAll("[data-get-app]").forEach(function (b) { b.hidden = true; });
+  if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent) && !installHidden()) installBox.hidden = false;
 
   window.addEventListener("beforeinstallprompt", function (e) {
     e.preventDefault();
     installPrompt = e;
-    showInstall("<b>Get the app.</b> Add Happy Hour to your home screen. It's free and opens in a tap.", true);
+    if (!installHidden()) installBox.hidden = false;
   });
-  document.getElementById("install-add").addEventListener("click", function () {
+  document.getElementById("install-now").addEventListener("click", function () {
     if (!installPrompt) return;
     installPrompt.prompt();
-    installPrompt.userChoice.then(function (c) { if (c.outcome === "accepted") installBox.hidden = true; });
+    installPrompt.userChoice.then(function (c) {
+      if (c.outcome === "accepted") { installBox.hidden = true; sheet.close(); }
+    });
     installPrompt = null;
   });
   document.getElementById("install-x").addEventListener("click", function () {
@@ -2044,9 +2305,6 @@
     try { localStorage.setItem(INSTALL_STORE, "1"); } catch (e) {}
   });
   window.addEventListener("appinstalled", function () { installBox.hidden = true; });
-  if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
-    showInstall("<b>Get the app.</b> Tap Share <b>⬆️</b> (in Safari it may be under <b>•••</b>), then <b>Add to Home Screen</b>.", false);
-  }
 
   // Keeps a copy of the app on the phone so it still opens with poor signal.
   if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
