@@ -154,7 +154,8 @@
             mask-image: linear-gradient(90deg, #000 88%, transparent);
   }
   .chips.scroll + .chips.scroll { margin-top: 2px; }
-  .search-box + .chips.scroll, .plan-top + .chips.scroll { margin-top: 6px; }
+  .plan-top + .chips.scroll { margin-top: 6px; }
+  #now-panel > .chips.scroll:first-child { margin-top: -6px; }
   .divider { flex: none; width: 1px; margin: 6px 2px; background: var(--chip-line); }
   .chip {
     flex: none;
@@ -187,6 +188,14 @@
   .search::placeholder { color: var(--muted); }
   .search::selection { background: rgba(255, 79, 216, .45); color: #fff; }
   .search-box { position: relative; }
+  .search-main { margin-bottom: 10px; z-index: 9; } /* above the pinned tabs so suggestions can be tapped */
+  .search-main .search {
+    padding: 15px 16px; font-size: 17px; border-radius: 18px;
+    background: #12061f; border-color: var(--pink);
+    box-shadow: var(--glow-pink), 0 10px 30px rgba(0, 0, 0, .45);
+  }
+  .search-main .search:focus { outline: none; box-shadow: 0 0 0 2px var(--pink), var(--glow-pink); }
+  .focus-chip { max-width: 70vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .suggest {
     position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 5;
     list-style: none; margin: 0; padding: 6px;
@@ -457,11 +466,16 @@
   <div class="hero-inner">
     <div class="logo"><span aria-hidden="true">🍻</span> Happy Hour</div>
     <h1 class="display">Thirsty?</h1>
-    <p>Cheap drinks near you, right now.</p>
+    <p>Type a suburb or a bar, or tap Near me.</p>
   </div>
 </header>
 
 <div class="wrap">
+  <div class="search-box search-main">
+    <input class="search" id="search" type="search" placeholder="🔍 Type a suburb or a bar" aria-label="Type a suburb or a bar" autocomplete="off" enterkeyhint="search" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="suggest">
+    <ul class="suggest" id="suggest" role="listbox" hidden></ul>
+  </div>
+
   <div class="tabs" role="tablist" aria-label="View">
     <button class="tab" role="tab" data-tab="now" aria-selected="true">🔥 Right now</button>
     <button class="tab" role="tab" data-tab="plan" aria-selected="false">🗓️ Plan ahead</button>
@@ -469,11 +483,8 @@
   </div>
 
   <div class="panel" id="now-panel">
-    <div class="search-box">
-      <input class="search" id="search" type="search" placeholder="🔍 Search a bar, suburb or drink" aria-label="Search a bar, suburb or drink" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="suggest">
-      <ul class="suggest" id="suggest" role="listbox" hidden></ul>
-    </div>
     <div class="chips scroll" role="group" aria-label="Where">
+      <button class="chip focus-chip" id="focus-chip" aria-pressed="true" hidden></button>
       <button class="chip" data-place="near" aria-pressed="false">📍 Near me</button>
       <button class="chip" data-place="Sydney" aria-pressed="false">Sydney</button>
       <button class="chip" data-place="Melbourne" aria-pressed="false">Melbourne</button>
@@ -564,6 +575,7 @@
   var state = {
     tab: "now", place: "near", when: "now", me: null, query: "",
     planCity: "Sydney", area: "all", day: "any", drink: null, savedOnly: false,
+    focus: null, // a searched place: { label, lat, lon }
   };
   try {
     var saved = JSON.parse(localStorage.getItem(STORE) || "{}");
@@ -736,7 +748,14 @@
     } catch (e) {}
   }
 
+  // Where distances are measured from: a searched place, or you (with Near me on).
+  function origin() {
+    if (state.focus) return state.focus;
+    return state.place === "near" && state.me ? state.me : null;
+  }
+
   function city() {
+    if (state.focus) return nearestCity(state.focus).city;
     if (state.place !== "near") return state.place;
     return state.me ? nearestCity(state.me).city : "Sydney";
   }
@@ -957,6 +976,7 @@
     var day = days && !weekend ? days[0] : null;
     var rows = cityVenues.filter(function (v) {
       if (!inArea(v) || !passesFilters(v)) return false;
+      if (state.query && !matches(v, state.query)) return false;
       if (days && !v.slots.some(function (s) { return days.indexOf(s.day) >= 0; })) return false;
       return true;
     });
@@ -965,7 +985,8 @@
     var where = areaName();
     var when = weekend ? " this weekend" : day == null ? "" : " on " + DAY_NAMES[day];
     var drink = state.drink ? " with " + (state.drink === "food" ? "food" : state.drink) + " deals" : "";
-    setNote(rows.length + " happy hour" + (rows.length === 1 ? "" : "s") + drink + " " + where + when + ".");
+    var match = state.query ? " matching \u201c" + state.query + "\u201d" : "";
+    setNote(rows.length + " happy hour" + (rows.length === 1 ? "" : "s") + drink + match + " " + where + when + ".");
 
     listEl.textContent = "";
     shown = [];
@@ -1008,8 +1029,14 @@
 
   function markNowButtons() {
     placeNote();
+    var fc = document.getElementById("focus-chip");
+    fc.hidden = !state.focus;
+    if (state.focus) {
+      fc.textContent = "📍 " + state.focus.label + " ✕";
+      fc.setAttribute("aria-label", "Showing near " + state.focus.label + ". Tap to clear.");
+    }
     document.querySelectorAll("[data-place]").forEach(function (b) {
-      b.setAttribute("aria-pressed", String(b.dataset.place === state.place));
+      b.setAttribute("aria-pressed", String(!state.focus && b.dataset.place === state.place));
     });
     document.querySelectorAll("[data-when]").forEach(function (b) {
       b.setAttribute("aria-pressed", String(b.dataset.when === state.when));
@@ -1019,11 +1046,12 @@
   // The happy hours matching the Right now filters, best first.
   function nowRows() {
     var c = city();
-    var useDistance = state.place === "near" && state.me && nearestCity(state.me).d <= FAR_AWAY_KM;
+    var from = origin();
+    var useDistance = from && nearestCity(from).d <= FAR_AWAY_KM;
     var rows = venues
       .filter(function (v) { return v.city === c; })
       .map(function (v) {
-        return { v: v, s: status(v), d: useDistance ? km(state.me, v) : null };
+        return { v: v, s: status(v), d: useDistance ? km(from, v) : null };
       })
       .filter(function (r) {
         if (state.query && !matches(r.v, state.query)) return false;
@@ -1167,17 +1195,18 @@
       pin.addTo(leaflet.layer);
       leaflet.markers[key(r.v)] = pin;
     });
-    var near = state.place === "near" && state.me && nearestCity(state.me).d <= FAR_AWAY_KM;
+    var from = origin();
+    var near = from && nearestCity(from).d <= FAR_AWAY_KM;
     if (near) {
-      L.circleMarker([state.me.lat, state.me.lon], {
-        radius: 8, color: "#ffffff", weight: 3, fillColor: "#2de2ff", fillOpacity: 1, className: "pin",
-      }).bindTooltip("You're here").addTo(leaflet.layer);
+      L.circleMarker([from.lat, from.lon], {
+        radius: 8, color: "#ffffff", weight: 3, fillColor: state.focus ? "#ff4fd8" : "#2de2ff", fillOpacity: 1, className: "pin",
+      }).bindTooltip(state.focus ? state.focus.label : "You're here").addTo(leaflet.layer);
     }
     // Only move the map when the place changes, so it doesn't jump while you look around.
-    var viewKey = near ? "me" : c;
+    var viewKey = near ? (state.focus ? "focus:" + state.focus.label : "me") : c;
     if (leaflet.viewKey !== viewKey) {
       leaflet.viewKey = viewKey;
-      if (near) map.setView([state.me.lat, state.me.lon], 14);
+      if (near) map.setView([from.lat, from.lon], 14);
       else if (rows.length) map.fitBounds(rows.map(function (r) { return [r.v.lat, r.v.lon]; }), { padding: [30, 30], maxZoom: 14 });
       else map.setView([CITIES[c].lat, CITIES[c].lon], 12);
     }
@@ -1362,6 +1391,13 @@
   function setNote(text) { noteEl.textContent = text || ""; }
 
   function placeNote() {
+    if (state.focus) {
+      var nc = nearestCity(state.focus);
+      setNote(nc.d > FAR_AWAY_KM
+        ? state.focus.label + " is outside Sydney and Melbourne, so here's " + nc.city + "."
+        : "Happy hours near " + state.focus.label + ", closest first.");
+      return;
+    }
     if (state.place !== "near") { setNote("Showing " + state.place + "."); return; }
     if (!state.me) { setNote(locating ? "Finding where you are…" : noteText); return; }
     var near = nearestCity(state.me);
@@ -1425,6 +1461,7 @@
   document.querySelectorAll("[data-place]").forEach(function (b) {
     b.addEventListener("click", function () {
       state.place = b.dataset.place;
+      clearFocus();
       save();
       if (state.place === "near") locate();
       render();
@@ -1438,6 +1475,12 @@
     });
   });
   document.getElementById("surprise").addEventListener("click", surprise);
+  document.getElementById("focus-chip").addEventListener("click", function () {
+    state.focus = null;
+    searchEl.value = ""; typed = ""; state.query = "";
+    if (state.place === "near" && !state.me) locate();
+    render();
+  });
   document.querySelectorAll("[data-tab]").forEach(function (b) {
     b.addEventListener("click", function () {
       state.tab = b.dataset.tab;
@@ -1498,32 +1541,80 @@
     parent.appendChild(document.createTextNode(text.slice(i + query.length)));
   }
 
+  // Every suburb in the list, with the middle point of its bars.
+  var AREAS = (function () {
+    var m = {};
+    venues.forEach(function (v) {
+      var k = v.city + "|" + v.area;
+      m[k] = m[k] || { area: v.area, city: v.city, lat: 0, lon: 0, n: 0 };
+      m[k].lat += v.lat; m[k].lon += v.lon; m[k].n++;
+    });
+    return Object.keys(m).map(function (k) {
+      var a = m[k];
+      return { area: a.area, city: a.city, lat: a.lat / a.n, lon: a.lon / a.n, n: a.n };
+    });
+  })();
+
   function buildSuggestions(query) {
     var q = query.toLowerCase();
     if (q.length < 1) return [];
-    var c = city(), out = [], areas = {};
-    var starts = function (t) { return t.toLowerCase().indexOf(q) === 0 ? 0 : 1; };
-    venues.forEach(function (v) {
-      if (v.city !== c) return;
-      if (v.area.toLowerCase().indexOf(q) >= 0) areas[v.area] = (areas[v.area] || 0) + 1;
-    });
-    Object.keys(areas)
-      .sort(function (a, b) { return starts(a) - starts(b) || a.localeCompare(b); })
+    var c = city(), out = [];
+    var rank = function (t, vc) { return (t.toLowerCase().indexOf(q) === 0 ? 0 : 2) + (vc === c ? 0 : 1); };
+    var exactArea = false;
+    AREAS
+      .filter(function (a) { return a.area.toLowerCase().indexOf(q) >= 0; })
+      .sort(function (a, b) { return rank(a.area, a.city) - rank(b.area, b.city) || a.area.localeCompare(b.area); })
       .slice(0, 3)
       .forEach(function (a) {
-        out.push({ icon: "📍", name: a, sub: areas[a] + (areas[a] === 1 ? " spot" : " spots"), value: a, all: false });
+        if (a.area.toLowerCase() === q) exactArea = true;
+        out.push({ icon: "📍", name: a.area, sub: a.city + " · " + a.n + (a.n === 1 ? " happy hour" : " happy hours") + " · and nearby",
+          value: a.area, place: { label: a.area, lat: a.lat, lon: a.lon } });
       });
     venues
-      .filter(function (v) { return v.city === c && v.name.toLowerCase().indexOf(q) >= 0; })
-      .sort(function (a, b) { return starts(a.name) - starts(b.name) || a.name.localeCompare(b.name); })
+      .filter(function (v) { return v.name.toLowerCase().indexOf(q) >= 0; })
+      .sort(function (a, b) { return rank(a.name, a.city) - rank(b.name, b.city) || a.name.localeCompare(b.name); })
       .slice(0, 6 - out.length)
       .forEach(function (v) {
-        out.push({ icon: "🍸", name: v.name, sub: v.area + " · " + v.deal, value: v.name, all: true });
+        out.push({ icon: "🍸", name: v.name, sub: v.area + " · " + v.deal, value: v.name, bar: v });
       });
-    if (!out.length && q.length >= 3) {
+    if (q.length >= 3 && !exactArea) {
+      out.push({ icon: "🧭", name: "Happy hours near \u201c" + query + "\u201d", sub: "Any suburb or street in Sydney or Melbourne", value: query, lookup: true });
+    }
+    if (!out.some(function (o) { return o.bar; }) && q.length >= 3) {
       out.push({ icon: "🗺️", name: "Find \u201c" + query + "\u201d on Google Maps", sub: "Not in our happy hour list yet", url: googleSearch(query) });
     }
     return out;
+  }
+
+  function clearFocus() {
+    if (!state.focus) return;
+    state.focus = null;
+    if (searchEl.value && !state.query) { searchEl.value = ""; typed = ""; }
+  }
+
+  // Shows happy hours around a place (a suburb from the list, or one looked up on the map).
+  function focusOn(place) {
+    state.focus = place;
+    state.query = "";
+    if (state.tab === "plan") state.tab = "now";
+    save();
+    render();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  // Looks up any suburb or street on OpenStreetMap's free search (Nominatim).
+  function lookUp(text) {
+    setNote("Finding " + text + "…");
+    var url = "https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=au&q=" + encodeURIComponent(text);
+    fetch(url, { headers: { "Accept-Language": "en" } })
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+      .then(function (list) {
+        if (!list.length) { setNote("Couldn't find \u201c" + text + "\u201d. Try a suburb name."); return; }
+        var label = text.replace(/\b\w/g, function (c) { return c.toUpperCase(); });
+        searchEl.value = label; typed = label;
+        focusOn({ label: label, lat: Number(list[0].lat), lon: Number(list[0].lon) });
+      })
+      .catch(function () { setNote("Couldn't look that up just now (no signal?). Try a suburb from the list."); });
   }
 
   function showSuggestions() {
@@ -1562,11 +1653,25 @@
     if (sg.url) { window.open(sg.url, "_blank", "noopener"); hideSuggestions(); return; }
     searchEl.value = sg.value;
     typed = sg.value;
-    state.query = sg.value;
-    // A bar may not be on right now, so show its whole week.
-    if (sg.all) { state.when = "all"; save(); }
     hideSuggestions();
     searchEl.blur();
+    if (sg.lookup) { lookUp(sg.value); return; }
+    if (sg.place) {
+      if (state.tab === "plan" && venues.some(function (v) { return v.area === sg.value && v.city === state.planCity; })) {
+        state.query = ""; state.area = sg.value; save(); render(); return;
+      }
+      focusOn(sg.place);
+      return;
+    }
+    state.focus = null;
+    state.query = sg.value;
+    // A bar may not be on right now, so show its whole week, in its own city.
+    if (sg.bar) {
+      state.when = "all";
+      if (state.place !== "near" || (state.me && nearestCity(state.me).city !== sg.bar.city) || !state.me) state.place = sg.bar.city;
+      state.planCity = sg.bar.city;
+      save();
+    }
     render();
   }
 
@@ -1602,6 +1707,7 @@
 
   searchEl.addEventListener("input", function (e) {
     typed = e.target.value;
+    state.focus = null;
     state.query = typed.trim();
     render();
     showSuggestions();
@@ -1617,6 +1723,20 @@
     hideSuggestions();
   });
   searchEl.addEventListener("keydown", function (e) {
+    // Enter with nothing highlighted: a known suburb, or look the place up.
+    if (e.key === "Enter" && (suggestEl.hidden || active < 0)) {
+      var text = searchEl.value.trim();
+      if (!text) return;
+      e.preventDefault();
+      var hit = AREAS.filter(function (a) { return a.area.toLowerCase() === text.toLowerCase(); })[0];
+      var bar = venues.filter(function (v) { return v.name.toLowerCase() === text.toLowerCase(); })[0];
+      hideSuggestions();
+      searchEl.blur();
+      if (bar) { suggestions = [{ value: bar.name, bar: bar }]; choose(0); }
+      else if (hit) focusOn({ label: hit.area, lat: hit.lat, lon: hit.lon });
+      else if (text.length >= 3) lookUp(text);
+      return;
+    }
     if (suggestEl.hidden) return;
     if ((e.key === "Tab" || e.key === "ArrowRight") && filledIn() && active >= 0) { e.preventDefault(); choose(active); return; }
     if (e.key === "ArrowDown") { e.preventDefault(); setActive(active + 1); }
@@ -1639,7 +1759,7 @@
       if (state.drink) bits.push(state.drink[0].toUpperCase() + state.drink.slice(1));
       bits.unshift(planCount + (planCount === 1 ? " spot" : " spots"));
     } else {
-      bits.push(state.place === "near" ? "📍 Near me" : state.place);
+      bits.push(state.focus ? "📍 " + state.focus.label : state.place === "near" ? "📍 Near me" : state.place);
       bits.push({ now: "🔥 On now", today: "Today", all: "All week" }[state.when]);
       if (state.savedOnly) bits.push("❤️ Saved");
       if (state.drink) bits.push(state.drink[0].toUpperCase() + state.drink.slice(1));
