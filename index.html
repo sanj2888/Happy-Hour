@@ -165,6 +165,8 @@
   .seg.seg-full button { padding: 10px 4px; font-size: 14px; white-space: nowrap; }
   .seg-full + .chips { margin-top: 10px; }
   .seg.seg-show { grid-template-columns: 1fr 1fr; }
+  .seg.seg-radius { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .seg.seg-radius button { padding: 8px 2px; font-size: 13px; }
   .seg.seg-show button[aria-pressed="true"] { background: var(--sunset); color: #1a0b2e; box-shadow: var(--glow-pink); }
   .seg-full + .seg-full { margin-top: 8px; }
   .hh-kicker {
@@ -636,6 +638,13 @@
       <button type="button" data-show="all" aria-pressed="false">🍺 All pubs &amp; bars</button>
       <button type="button" data-show="hh" aria-pressed="false">🔥 Happy hours</button>
     </div>
+    <div class="seg seg-full seg-radius" id="radius-seg" role="group" aria-label="How far to look">
+      <button type="button" data-radius="auto" aria-pressed="false">Auto</button>
+      <button type="button" data-radius="1000" aria-pressed="false">1 km</button>
+      <button type="button" data-radius="2000" aria-pressed="false">2 km</button>
+      <button type="button" data-radius="5000" aria-pressed="false">5 km</button>
+      <button type="button" data-radius="10000" aria-pressed="false">10 km</button>
+    </div>
     <div class="seg seg-full" id="when-seg" role="group" aria-label="When">
       <button type="button" data-when="now" aria-pressed="false">🔥 On now</button>
       <button type="button" data-when="today" aria-pressed="false">Today</button>
@@ -781,10 +790,11 @@
     crawl: false, crawlStops: 3, // the bar crawl planner (open or not, and how many bars)
     crawlFrom: null, // where the crawl starts: null (automatic), "me", or { label, lat, lon }
     show: "all", // Right now and Map: "all" pubs and bars (happy hours marked 🔥), or "hh" happy hours only
+    radius: "auto", // All pubs & bars: how far to look, "auto" (2 km, wider in spread-out suburbs) or metres
   };
   try {
     var saved = JSON.parse(localStorage.getItem(STORE) || "{}");
-    ["tab", "place", "when", "planCity", "area", "day", "show"].forEach(function (k) { if (saved[k]) state[k] = saved[k]; });
+    ["tab", "place", "when", "planCity", "area", "day", "show", "radius"].forEach(function (k) { if (saved[k]) state[k] = saved[k]; });
   } catch (e) {}
 
   // ----- Reading the hours -----
@@ -948,7 +958,7 @@
   function save() {
     try {
       localStorage.setItem(STORE, JSON.stringify({
-        tab: state.tab, place: state.place, when: state.when, planCity: state.planCity, area: state.area, day: state.day, show: state.show,
+        tab: state.tab, place: state.place, when: state.when, planCity: state.planCity, area: state.area, day: state.day, show: state.show, radius: state.radius,
       }));
     } catch (e) {}
   }
@@ -1026,6 +1036,8 @@
     var all = state.show === "all";
     document.getElementById("when-seg").hidden = all;
     document.getElementById("key-pub").hidden = !all;
+    document.getElementById("radius-seg").hidden = !all;
+    document.querySelectorAll("[data-radius]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.radius === String(state.radius))); });
     document.getElementById("now-tiles").hidden = all;
     document.getElementById("now-panel").hidden = state.tab === "plan";
     document.getElementById("surprise").hidden = state.tab === "plan" || all;
@@ -1872,7 +1884,7 @@
       near ? (state.focus ? "focus:" + state.focus.label : "me") : c;
     if (leaflet.viewKey !== viewKey) {
       leaflet.viewKey = viewKey;
-      if (all && center) map.setView([center.lat, center.lon], others.radius > 5000 ? 12 : others.radius > 2000 ? 13 : 15);
+      if (all && center) map.setView([center.lat, center.lon], others.radius > 5000 ? 12 : others.radius > 2000 ? 13 : others.radius > 1000 ? 15 : 16);
       else if (near) map.setView([from.lat, from.lon], 14);
       else if (rows.length) map.fitBounds(rows.map(function (r) { return [r.v.lat, r.v.lon]; }), { padding: [30, 30], maxZoom: 14 });
       else map.setView([CITIES[c].lat, CITIES[c].lon], 12);
@@ -1917,18 +1929,20 @@
     return CITIES[state.place];
   }
 
-  // Looks within 2 km first; in spread-out suburbs with fewer than ENOUGH pubs, widens to 5 km, then 10 km.
+  // Auto looks within 2 km first; in spread-out suburbs with fewer than ENOUGH pubs, widens to 5 km,
+  // then 10 km. A chosen distance looks exactly that far.
   function loadOthers(center) {
-    var k = center.lat.toFixed(3) + "," + center.lon.toFixed(3);
+    var radii = state.radius === "auto" ? RADII : [Number(state.radius)];
+    var k = center.lat.toFixed(3) + "," + center.lon.toFixed(3) + "|" + state.radius;
     if (others.key === k) return;
-    others = { key: k, status: "loading", list: [], radius: RADII[0] };
+    others = { key: k, status: "loading", list: [], radius: radii[0] };
     try {
-      var cached = JSON.parse(sessionStorage.getItem("happy-hour-osm3:" + k) || "null");
+      var cached = JSON.parse(sessionStorage.getItem("happy-hour-osm4:" + k) || "null");
       if (cached) { others.list = cached.list; others.radius = cached.radius; others.status = "ready"; return; }
     } catch (e) {}
     var ask = function (r, i) {
       var query = '[out:json][timeout:25];nwr["amenity"~"^(bar|pub|nightclub|biergarten)$"](around:' +
-        RADII[r] + "," + center.lat + "," + center.lon + ");out center tags 600;";
+        radii[r] + "," + center.lat + "," + center.lon + ");out center tags " + (radii[r] > 2000 ? 1500 : 600) + ";";
       fetch(OVERPASS[i], {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -1950,11 +1964,11 @@
               };
             })
             .filter(function (o) { return o.name && o.lat != null; });
-          if (found.length < ENOUGH && r + 1 < RADII.length) { others.radius = RADII[r + 1]; render(); ask(r + 1, 0); return; }
+          if (found.length < ENOUGH && r + 1 < radii.length) { others.radius = radii[r + 1]; render(); ask(r + 1, 0); return; }
           others.list = found.filter(function (o) { return !isListed(o); });
-          others.radius = RADII[r];
+          others.radius = radii[r];
           others.status = "ready";
-          try { sessionStorage.setItem("happy-hour-osm3:" + k, JSON.stringify({ list: others.list, radius: others.radius })); } catch (e) {}
+          try { sessionStorage.setItem("happy-hour-osm4:" + k, JSON.stringify({ list: others.list, radius: others.radius })); } catch (e) {}
           render();
         })
         .catch(function () {
@@ -2057,9 +2071,9 @@
     var hh = rows.filter(function (r) { return r.v || r.o.happy; }).length;
     setCount(rows.length, rows.length === 1 ? "pub or bar" : "pubs & bars");
     if (hh) setNote(noteEl.textContent.replace(" 🔥 = happy hour.", " " + hh + " with happy hours 🔥"));
-    if (others.status === "ready" && others.radius > RADII[0]) setNote("Not many pubs close by, so here's everything within " + radiusText() + ". " + noteEl.textContent);
+    if (others.status === "ready" && state.radius === "auto" && others.radius > RADII[0]) setNote("Not many pubs close by, so here's everything within " + radiusText() + ". " + noteEl.textContent);
 
-    if (others.status === "loading") otherMessage(others.radius > RADII[0] ? "Not many close by, looking further out (" + radiusText() + ")…" : "Finding every pub and bar nearby…");
+    if (others.status === "loading") otherMessage(state.radius === "auto" && others.radius > RADII[0] ? "Not many close by, looking further out (" + radiusText() + ")…" : "Finding every pub and bar nearby…");
     if (others.status === "error") {
       var retry = el("button", "chip", "Try again");
       retry.addEventListener("click", function () { others.key = null; render(); });
@@ -2255,6 +2269,13 @@
     });
   });
   document.getElementById("surprise").addEventListener("click", surprise);
+  document.querySelectorAll("[data-radius]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      state.radius = b.dataset.radius === "auto" ? "auto" : Number(b.dataset.radius);
+      save();
+      render();
+    });
+  });
   document.querySelectorAll("[data-show]").forEach(function (b) {
     b.addEventListener("click", function () {
       state.show = b.dataset.show;
