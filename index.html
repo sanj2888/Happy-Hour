@@ -1068,7 +1068,7 @@
     document.querySelector("[data-open-now]").setAttribute("aria-pressed", String(state.openNow));
     document.querySelector("[data-saved-all]").setAttribute("aria-pressed", String(state.savedOnly));
     var radiusEl = document.getElementById("radius");
-    radiusEl.hidden = !all || state.tab === "plan";
+    radiusEl.hidden = state.tab === "plan" || (!all && !origin());
     radiusEl.value = String(state.radius);
     document.getElementById("now-tiles").hidden = all;
     document.getElementById("now-panel").hidden = state.tab === "plan";
@@ -1349,10 +1349,12 @@
 
   // The happy hours matching the Nearby filters, best first.
   // With soon set, the ones starting within the hour instead.
-  function nowRows(soon) {
+  // With a place (Near me or a search), only happy hours within the chosen distance, unless anyDistance.
+  function nowRows(soon, anyDistance) {
     var c = city();
     var from = origin();
     var useDistance = from && nearestCity(from).d <= FAR_AWAY_KM;
+    var maxKm = useDistance && !anyDistance ? state.radius / 1000 : Infinity;
     var rows = venues
       .filter(function (v) { return v.city === c; })
       .map(function (v) {
@@ -1362,6 +1364,7 @@
         if (state.query && !matches(r.v, state.query)) return false;
         if (state.savedOnly && !isSaved(r.v)) return false;
         if (!passesFilters(r.v)) return false;
+        if (r.d != null && r.d > maxKm) return false;
         if (soon) return r.s.kind === "soon" && r.s.minsAway <= SOON_MINS;
         if (state.when === "now") return r.s.kind === "on";
         if (state.when === "today") return r.s.today;
@@ -1379,6 +1382,33 @@
     return rows;
   }
 
+  // No happy hours within the distance of the place, but some further away: say so, name the nearest,
+  // and offer to look further or see every pub and bar there instead.
+  function areaEmpty() {
+    var further = nowRows(false, true);
+    if (!origin() || !further.length || further[0].d == null) return false;
+    var nearest = further[0];
+    var where = state.focus ? state.focus.label : "you";
+    var when = { now: " on right now", today: " today", all: "" }[state.when];
+    var empty = el("li", "empty");
+    empty.appendChild(el("div", "big", "📍"));
+    empty.appendChild(el("h2", "display", "None within " + state.radius / 1000 + " km"));
+    empty.appendChild(el("p", null, "No happy hours" + when + " within " + state.radius / 1000 + " km of " + where +
+      ". Nearest: " + nearest.v.name + " (" + nearest.v.area + "), " + distanceText(nearest.d) + "."));
+    var wider = RADII.filter(function (r) { return r / 1000 >= nearest.d; })[0];
+    if (wider) {
+      var look = el("button", "chip", "Look within " + wider / 1000 + " km");
+      look.addEventListener("click", function () { state.radius = wider; save(); render(); });
+      empty.appendChild(look);
+      empty.appendChild(document.createTextNode(" "));
+    }
+    var pubs = el("button", "chip", "🍺 Show all pubs & bars");
+    pubs.addEventListener("click", function () { state.show = "all"; save(); render(); });
+    empty.appendChild(pubs);
+    listEl.appendChild(empty);
+    return true;
+  }
+
   function renderHappyHours() {
     markNowButtons();
     var c = city();
@@ -1389,6 +1419,7 @@
 
     listEl.textContent = "";
     if (state.crawl) listEl.appendChild(crawlBox());
+    if (!rows.length && !soon.length && areaEmpty()) return;
     if (!rows.length && !soon.length) {
       var empty = el("li", "empty");
       var isNow = state.when === "now";
@@ -2354,7 +2385,7 @@
       var nc = nearestCity(state.focus);
       setNote(nc.d > FAR_AWAY_KM
         ? state.focus.label + " is outside Sydney and Melbourne, so here's " + nc.city + "."
-        : "Happy hours near " + state.focus.label + ", closest first.");
+        : "Happy hours within " + state.radius / 1000 + " km of " + state.focus.label + ", closest first.");
       return;
     }
     if (state.place !== "near") { setNote("In " + state.place + "."); return; }
@@ -2363,7 +2394,7 @@
     if (near.d > FAR_AWAY_KM) {
       setNote("You're not near Sydney or Melbourne yet, so here's " + near.city + ", the closest city.");
     } else {
-      setNote("Bars near you in " + near.city + ", closest first.");
+      setNote("Happy hours within " + state.radius / 1000 + " km of you, closest first.");
     }
   }
 
@@ -2616,9 +2647,11 @@
   }
 
   // Shows happy hours around a place (a suburb from the list, or one looked up on the map).
+  // A searched place always opens every pub and bar there first; Happy hours is one tap away.
   function focusOn(place) {
     state.focus = place;
     state.query = "";
+    state.show = "all";
     if (state.tab === "plan") state.tab = "now";
     save();
     render();
