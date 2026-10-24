@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Happy Hour</title>
-<meta name="description" content="Cheap drinks near you, right now. Happy hours in Sydney and Melbourne.">
+<meta name="description" content="Every pub near you, and the best happy hours in Sydney and Melbourne.">
 <meta name="theme-color" content="#0b0414">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="favicon.png" type="image/png">
@@ -18,7 +18,7 @@
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://sanj2888.github.io/Happy-Hour/">
 <meta property="og:title" content="Happy Hour 🍹 Cheap drinks near you">
-<meta property="og:description" content="Find bars pouring happy hour right now in Sydney and Melbourne.">
+<meta property="og:description" content="Every pub near you, and the best happy hours in Sydney and Melbourne.">
 <meta property="og:image" content="https://sanj2888.github.io/Happy-Hour/thumbnail.png?v=2">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -605,7 +605,7 @@
   <div class="hero-inner">
     <div class="logo"><span aria-hidden="true">🍻</span> Happy Hour</div>
     <h1 class="display">Thirsty?</h1>
-    <p>Type a suburb or a bar, or tap Near me.</p>
+    <p>Every pub near you, and the best happy hours.</p>
     <div class="hero-actions">
       <button class="hero-btn" type="button" data-share-app>📤 Share</button>
       <button class="hero-btn" type="button" data-get-app>📲 Get the app</button>
@@ -1895,6 +1895,7 @@
   var OTHER_RADIUS_M = 2000;
   var ALL_KM = OTHER_RADIUS_M / 1000;
   var ALL_PAGE = 25;
+  var BOOST_KM = 0.4; // about a 5-minute walk
   var OTHER_TYPES = { bar: "🍸 Bar", pub: "🍺 Pub", nightclub: "🪩 Nightclub", biergarten: "🌳 Beer garden" };
   // Free public Overpass servers; the second is tried if the first is busy.
   var OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
@@ -1971,7 +1972,12 @@
     var osm = others.list
       .map(function (o) { return { o: o, d: km(center, o) }; })
       .filter(function (r) { return r.d <= ALL_KM && (!q || r.o.name.toLowerCase().indexOf(q) >= 0); });
-    return ours.concat(osm).sort(function (a, b) { return a.d - b.d; });
+    // Happy hours on now (or starting within the hour) a short walk away go first: that's the bonus.
+    ours.forEach(function (r) {
+      r.boost = r.d > BOOST_KM ? 0 : r.s.kind === "on" ? 2 : r.s.kind === "soon" && r.s.minsAway <= SOON_MINS ? 1 : 0;
+    });
+    // On now first, then starting soon, then everything else; closest first within each.
+    return ours.concat(osm).sort(function (a, b) { return (b.boost || 0) - (a.boost || 0) || a.d - b.d; });
   }
 
   // Makes OpenStreetMap times readable: "Mo-Fr 17:00-19:00" becomes "Mon–Fri 5 pm to 7 pm".
@@ -2017,6 +2023,12 @@
     return li;
   }
 
+  function heading(text, side) {
+    var head = el("li", "area-head", text);
+    head.appendChild(el("span", null, side));
+    listEl.appendChild(head);
+  }
+
   function otherMessage(text, button) {
     var li = el("li", "others-msg", text);
     if (button) li.appendChild(button);
@@ -2055,7 +2067,10 @@
       listEl.appendChild(empty);
       return;
     }
-    rows.slice(0, allShown).forEach(function (r) {
+    var boosted = rows.filter(function (r) { return r.boost; }).length;
+    rows.slice(0, allShown).forEach(function (r, i) {
+      if (boosted && i === 0) heading("🔥 Happy hour, a short walk away", boosted + (boosted === 1 ? " spot" : " spots"));
+      if (boosted && i === boosted) heading("🍺 Every pub & bar nearby", "Closest first");
       listEl.appendChild(r.v ? card(r.v, r.s, r.d, true) : otherCard(r.o, r.d));
     });
     if (rows.length > allShown) {
