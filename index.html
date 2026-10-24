@@ -2000,8 +2000,14 @@
   var BOOST_KM = 0.4; // about a 5-minute walk
   var OTHER_TYPES = { bar: "🍸 Bar", pub: "🍺 Pub", nightclub: "🪩 Nightclub", biergarten: "🌳 Beer garden" };
   // Free public Overpass servers; the second is tried if the first is busy.
-  var OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter",
-    "https://maps.mail.ru/osm/tools/overpass/api/interpreter"];
+  // Free Overpass servers, tried in order (each can take 10-30 seconds). Tested Oct 2026: private.coffee
+  // answers fastest; overpass-api.de answers GET requests, slowly; kumi is often rate-limited.
+  var OVERPASS = [
+    { url: "https://overpass.private.coffee/api/interpreter", get: false },
+    { url: "https://overpass-api.de/api/interpreter", get: true },
+    { url: "https://overpass.kumi.systems/api/interpreter", get: false },
+  ];
+  var PHOTON_TYPES = ["pub", "bar", "nightclub", "biergarten"];
   var others = { key: null, status: "idle", list: [] };
   var allShown = ALL_PAGE, allKey = null;
 
@@ -2028,24 +2034,53 @@
       .finally(function () { clearTimeout(timer); });
   }
 
-  // Every pub and bar within the chosen distance (the dropdown) of the place.
+  // Every pub and bar within the chosen distance (the dropdown) of the place, in two steps:
+  // 1. Photon (free, no key) answers in under a second with the nearest 50, so the list shows straight away.
+  // 2. Overpass then sends the full list with opening hours; it replaces the first list when it arrives.
+  // If Overpass never answers, the Photon list stays.
   function loadOthers(center) {
     var radius = state.radius;
     var k = center.lat.toFixed(3) + "," + center.lon.toFixed(3) + "|" + radius;
     if (others.key === k) return;
-    others = { key: k, status: "loading", list: [], radius: radius };
+    others = { key: k, status: "loading", list: [], radius: radius, full: false, pending: true };
     try {
-      var cached = JSON.parse(sessionStorage.getItem("happy-hour-osm5:" + k) || "null");
-      if (cached) { others.list = cached; others.status = "ready"; return; }
+      var cached = JSON.parse(sessionStorage.getItem("happy-hour-osm6:" + k) || "null");
+      if (cached) { others.list = cached; others.status = "ready"; others.full = true; return; }
     } catch (e) {}
+
+    var photon = "https://photon.komoot.io/reverse?lat=" + center.lat + "&lon=" + center.lon +
+      "&radius=" + radius / 1000 + "&limit=50&lang=en" + PHOTON_TYPES.map(function (t) { return "&osm_tag=amenity:" + t; }).join("");
+    timedFetch(photon, {}, 10000)
+      .then(function (res) { return res.ok ? res.json() : Promise.reject(res.status); })
+      .then(function (data) {
+        if (others.key !== k || others.full) return;
+        others.list = (data.features || [])
+          .map(function (f) {
+            var p = f.properties || {}, c = f.geometry && f.geometry.coordinates;
+            return {
+              name: p.name, type: p.osm_value, lat: c && c[1], lon: c && c[0], hours: "", happy: "",
+              street: [p.housenumber, p.street].filter(Boolean).join(" "),
+              suburb: p.district || p.locality || p.city || "",
+            };
+          })
+          .filter(function (o) { return o.name && o.lat != null && km(center, o) <= radius / 1000 && !isListed(o); });
+        others.status = "ready";
+        render();
+      })
+      .catch(function () {});
+
     var query = '[out:json][timeout:25];nwr["amenity"~"^(bar|pub|nightclub|biergarten)$"](around:' +
       radius + "," + center.lat + "," + center.lon + ");out center tags " + (radius > 5000 ? 2000 : radius > 2000 ? 1500 : 600) + ";";
     var ask = function (i) {
-      timedFetch(OVERPASS[i], {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: "data=" + encodeURIComponent(query),
-      }, 20000)
+      var server = OVERPASS[i];
+      var request = server.get
+        ? timedFetch(server.url + "?data=" + encodeURIComponent(query), {}, 40000)
+        : timedFetch(server.url, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: "data=" + encodeURIComponent(query),
+        }, 40000);
+      request
         .then(function (res) { return res.ok ? res.json() : Promise.reject(res.status); })
         .then(function (data) {
           if (others.key !== k) return;
@@ -2063,13 +2098,16 @@
             })
             .filter(function (o) { return o.name && o.lat != null && !isListed(o); });
           others.status = "ready";
-          try { sessionStorage.setItem("happy-hour-osm5:" + k, JSON.stringify(others.list)); } catch (e) {}
+          others.full = true;
+          others.pending = false;
+          try { sessionStorage.setItem("happy-hour-osm6:" + k, JSON.stringify(others.list)); } catch (e) {}
           render();
         })
         .catch(function () {
           if (others.key !== k) return;
           if (i + 1 < OVERPASS.length) { ask(i + 1); return; }
-          others.status = "error";
+          others.pending = false;
+          if (others.status === "loading") others.status = "error";
           render();
         });
     };
@@ -2278,6 +2316,7 @@
 
 
     if (others.status === "loading" && !state.savedOnly) otherMessage("Finding every pub and bar within " + radiusText() + "…");
+    if (others.status === "ready" && others.pending && !state.savedOnly) otherMessage("Loading the full list and opening hours…");
     if (state.openNow && rows.length) otherMessage("Places known to be open now. Many pubs don't list their hours on the map, so some may be missing.");
     // Not many around: offer to look further (e.g. spread-out suburbs).
     var wider = RADII.filter(function (r) { return r > state.radius; })[0];
