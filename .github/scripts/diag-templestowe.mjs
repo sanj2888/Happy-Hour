@@ -6,7 +6,7 @@ const SITE = "https://sanj2888.github.io/Happy-Hour/";
 // Wait for the new version to be published.
 for (let i = 0; i < 30; i++) {
   const html = await (await fetch(SITE + "?v=" + Date.now())).text();
-  if (html.includes("photon.komoot.io/reverse")) { log("New version is live"); break; }
+  if (html.includes("Closest just outside")) { log("New version is live"); break; }
   log("Waiting for publish..."); await new Promise((r) => setTimeout(r, 15000));
 }
 
