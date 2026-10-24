@@ -407,6 +407,8 @@
     background: var(--c); box-shadow: 0 0 8px var(--c);
   }
   .pin { filter: drop-shadow(0 0 6px currentColor); }
+  /* OpenStreetMap tiles are light, so flip them to a dark night map with a purple tint. */
+  .leaflet-tile-pane { filter: invert(1) hue-rotate(200deg) brightness(.85) contrast(.9) saturate(.6); }
   .leaflet-popup-content-wrapper, .leaflet-popup-tip {
     background: #1d0f33 !important; color: var(--text) !important;
     border: 1px solid var(--pink); box-shadow: var(--glow-pink) !important;
@@ -1127,7 +1129,7 @@
     });
   }
 
-  // ----- Map tab (Leaflet with free OpenStreetMap / CARTO tiles, loaded only when opened) -----
+  // ----- Map tab (Leaflet with free OpenStreetMap tiles, no key, loaded only when opened) -----
 
   var LEAFLET = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/";
   var leaflet = { status: "idle", map: null, layer: null, viewKey: null, markers: {} };
@@ -1176,9 +1178,9 @@
     var L = window.L, c = city();
     if (!leaflet.map) {
       leaflet.map = L.map("map", { zoomControl: true });
-      L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-        maxZoom: 19, subdomains: "abcd",
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
       }).addTo(leaflet.map);
       leaflet.layer = L.layerGroup().addTo(leaflet.map);
     }
