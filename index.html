@@ -963,13 +963,11 @@
   }
 
   // Venue positions are approximate, so distances are rounded.
-  var WALK_KM_PER_MIN = 4.5 / 60; // a relaxed walking pace
-
-  // Venue positions are approximate, so walks are rounded to 5 minutes.
+  // One style for every distance: "450 m away" under 1 km (to the nearest 50 m), then "1.2 km away".
   function distanceText(d) {
-    if (d < 2.5) return "about " + Math.max(5, Math.round(d / WALK_KM_PER_MIN / 5) * 5) + " min walk";
-    if (d < 10) return "about " + d.toFixed(1) + " km away";
-    return "about " + Math.round(d) + " km away";
+    if (d < 1) return Math.max(50, Math.round(d * 20) * 50) + " m away";
+    if (d < 10) return d.toFixed(1) + " km away";
+    return Math.round(d) + " km away";
   }
 
   function nearestCity(me) {
@@ -1507,7 +1505,6 @@
   var STOP_MINS = 45;    // time at each bar, including the walk to the next
   var HOP_KM = 1.5;      // furthest walk between two bars
   var FIRST_HOP_KM = 3;  // furthest first bar from you (or the searched suburb)
-  var WALK_KMH = 4.5;
   var crawl = { key: null, plan: null, shuffle: 0 };
 
   // True if the happy hour is on this many minutes from now.
@@ -1617,8 +1614,7 @@
   }
 
   function walkText(d) {
-    var mins = Math.max(2, Math.round(d / WALK_KMH * 60));
-    return "🚶 about " + mins + " min walk";
+    return "🚶 " + distanceText(d).replace(" away", "");
   }
 
   // Walking directions in Google Maps (no key): from the starting point to the first bar, then on
@@ -2158,10 +2154,7 @@
   }
 
   // OpenStreetMap positions are exact, so walks are to the minute.
-  function otherDistance(d) {
-    if (d < 2.5) return Math.max(1, Math.round(d / WALK_KM_PER_MIN)) + " min walk";
-    return d.toFixed(1) + " km away";
-  }
+  function otherDistance(d) { return distanceText(d); }
 
   // ----- Open now? Reads common OpenStreetMap opening_hours, e.g. "Mo-Fr 11:00-23:00; Sa-Su 12:00-01:00" -----
   // Anything it can't read (public holidays, months, "sunset"...) is skipped; with nothing readable the
