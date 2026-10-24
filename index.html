@@ -1996,11 +1996,11 @@
   var BOOST_KM = 0.4; // about a 5-minute walk
   var OTHER_TYPES = { bar: "🍸 Bar", pub: "🍺 Pub", nightclub: "🪩 Nightclub", biergarten: "🌳 Beer garden" };
   // Free public Overpass servers; the second is tried if the first is busy.
-  // Free Overpass servers, tried in order (each can take 10-30 seconds). Tested Oct 2026: private.coffee
-  // answers fastest; overpass-api.de answers GET requests, slowly; kumi is often rate-limited.
+  // Free Overpass servers, tried in order (each can take 10-30 seconds). Tested Oct 2026 from a browser:
+  // overpass-api.de answers GET requests reliably but slowly; private.coffee sometimes; kumi is often rate-limited.
   var OVERPASS = [
-    { url: "https://overpass.private.coffee/api/interpreter", get: false },
     { url: "https://overpass-api.de/api/interpreter", get: true },
+    { url: "https://overpass.private.coffee/api/interpreter", get: false },
     { url: "https://overpass.kumi.systems/api/interpreter", get: false },
   ];
   var PHOTON_TYPES = ["pub", "bar", "nightclub", "biergarten"];
@@ -2038,19 +2038,20 @@
     var radius = state.radius;
     var k = center.lat.toFixed(3) + "," + center.lon.toFixed(3) + "|" + radius;
     if (others.key === k) return;
-    others = { key: k, status: "loading", list: [], radius: radius, full: false, pending: true };
+    others = { key: k, status: "loading", list: [], outside: [], radius: radius, full: false, pending: true };
     try {
-      var cached = JSON.parse(sessionStorage.getItem("happy-hour-osm6:" + k) || "null");
-      if (cached) { others.list = cached; others.status = "ready"; others.full = true; return; }
+      var cached = JSON.parse(sessionStorage.getItem("happy-hour-osm7:" + k) || "null");
+      if (cached) { others.list = cached.list; others.outside = cached.outside || []; others.status = "ready"; others.full = true; others.pending = false; return; }
     } catch (e) {}
 
+    // Asks a little wider than the distance, so there's something to show "just outside" it.
     var photon = "https://photon.komoot.io/reverse?lat=" + center.lat + "&lon=" + center.lon +
-      "&radius=" + radius / 1000 + "&limit=50&lang=en" + PHOTON_TYPES.map(function (t) { return "&osm_tag=amenity:" + t; }).join("");
+      "&radius=" + Math.max(10, radius / 1000 * 2) + "&limit=50&lang=en" + PHOTON_TYPES.map(function (t) { return "&osm_tag=amenity:" + t; }).join("");
     timedFetch(photon, {}, 10000)
       .then(function (res) { return res.ok ? res.json() : Promise.reject(res.status); })
       .then(function (data) {
         if (others.key !== k || others.full) return;
-        others.list = (data.features || [])
+        var found = (data.features || [])
           .map(function (f) {
             var p = f.properties || {}, c = f.geometry && f.geometry.coordinates;
             return {
@@ -2059,7 +2060,9 @@
               suburb: p.district || p.locality || p.city || "",
             };
           })
-          .filter(function (o) { return o.name && o.lat != null && km(center, o) <= radius / 1000 && !isListed(o); });
+          .filter(function (o) { return o.name && o.lat != null && !isListed(o); });
+        others.list = found.filter(function (o) { return km(center, o) <= radius / 1000; });
+        others.outside = found.filter(function (o) { return km(center, o) > radius / 1000; });
         others.status = "ready";
         render();
       })
@@ -2096,7 +2099,7 @@
           others.status = "ready";
           others.full = true;
           others.pending = false;
-          try { sessionStorage.setItem("happy-hour-osm6:" + k, JSON.stringify(others.list)); } catch (e) {}
+          try { sessionStorage.setItem("happy-hour-osm7:" + k, JSON.stringify({ list: others.list, outside: others.outside })); } catch (e) {}
           render();
         })
         .catch(function () {
@@ -2323,7 +2326,19 @@
       retry.addEventListener("click", function () { others.key = null; render(); });
       otherMessage("Couldn't load every pub just now (busy or no signal). ", retry);
     }
-    if (!rows.length && (others.status === "ready" || state.savedOnly)) {
+    // Few or none inside the distance: also list the closest ones just outside it, so the list is never empty.
+    var outside = [];
+    if (others.status === "ready" && rows.length < FEW && !state.savedOnly && !state.openNow && !state.query) {
+      var inKm = state.radius / 1000;
+      outside = others.outside
+        .map(function (o) { return { o: o, d: km(center, o) }; })
+        .concat(venues.map(function (v) { return { v: v, s: status(v), d: km(center, v) }; })
+          .filter(function (r) { return r.d > inKm && r.d <= Math.max(10, inKm * 3); }))
+        .sort(function (a, b) { return a.d - b.d; })
+        .slice(0, 10);
+    }
+    if (!rows.length && outside.length) setCount(outside.length, (outside.length === 1 ? "pub or bar" : "pubs & bars") + " just outside " + radiusText());
+    if (!rows.length && !outside.length && (others.status === "ready" || state.savedOnly)) {
       var empty = el("li", "empty");
       empty.appendChild(el("div", "big", state.savedOnly ? "❤️" : state.openNow ? "🌙" : "🔍"));
       empty.appendChild(el("h2", "display", state.savedOnly ? "Nothing saved yet" : state.openNow ? "Nothing known to be open" : "No pubs found"));
@@ -2345,6 +2360,10 @@
       var more = el("button", "chip", "Show " + Math.min(ALL_PAGE, rows.length - allShown) + " more");
       more.addEventListener("click", function () { allShown += ALL_PAGE; render(); });
       otherMessage("", more);
+    }
+    if (outside.length) {
+      heading("📍 Closest just outside " + radiusText(), outside.length + (outside.length === 1 ? " place" : " places"));
+      outside.forEach(function (r) { listEl.appendChild(r.v ? card(r.v, r.s, r.d, true) : otherCard(r.o, r.d)); });
     }
     if (others.status === "ready") {
       var credit = el("li", "others-msg small");
