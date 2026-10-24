@@ -599,6 +599,9 @@
   .empty h2 { margin: 12px 0 4px; font-size: 20px; }
   .empty p { margin: 0; color: var(--muted); }
   .empty .chip { margin-top: 16px; }
+  .empty .or { margin-top: 16px; font-weight: 600; color: var(--text); }
+  .city-picks { justify-content: center; }
+  .city-picks .chip { margin-top: 8px; }
 
   .others-head { margin-top: 26px; flex-direction: column; align-items: flex-start; gap: 4px; }
   .card.mini { padding: 14px 16px 14px 20px; background: rgba(22, 10, 38, .7); }
@@ -654,8 +657,6 @@
     <div class="chips" role="group" aria-label="Where">
       <button class="chip focus-chip" id="focus-chip" aria-pressed="true" hidden></button>
       <button class="chip" data-place="near" aria-pressed="false">📍 Near me</button>
-      <button class="chip" data-place="Sydney" aria-pressed="false">Sydney</button>
-      <button class="chip" data-place="Melbourne" aria-pressed="false">Melbourne</button>
     </div>
     <div class="seg seg-full seg-show" role="group" aria-label="Show">
       <button type="button" data-show="all" aria-pressed="false">🍺 All pubs &amp; bars</button>
@@ -818,6 +819,11 @@
     var saved = JSON.parse(localStorage.getItem(STORE) || "{}");
     ["tab", "place", "when", "planCity", "area", "day", "show", "radius"].forEach(function (k) { if (saved[k]) state[k] = saved[k]; });
     if (!(Number(state.radius) > 0)) state.radius = 2000; // "auto" from an older version
+    // The Sydney and Melbourne buttons are gone: a saved city becomes its CBD, like a search.
+    if (CITIES[state.place]) {
+      state.focus = { label: state.place + " CBD", lat: CITIES[state.place].lat, lon: CITIES[state.place].lon };
+      state.place = "near";
+    }
     state.radius = Number(state.radius);
   } catch (e) {}
 
@@ -1382,6 +1388,25 @@
     return rows;
   }
 
+  // No location yet (or it's blocked): how to turn it on, or pick a city centre, or search above.
+  function locationPrompt() {
+    if (locating) return; // the note says "Finding where you are…"
+    setNote(""); // the steps are in the box below
+    var box = el("li", "empty");
+    box.appendChild(el("div", "big", "📍"));
+    box.appendChild(el("h2", "display", "Where are you?"));
+    box.appendChild(el("p", null, noteText || "Tap Near me to use your location, or search a suburb above."));
+    var row = el("div", "chips city-picks");
+    Object.keys(CITIES).forEach(function (c) {
+      var b = el("button", "chip", "📍 " + c + " CBD");
+      b.addEventListener("click", function () { focusOn({ label: c + " CBD", lat: CITIES[c].lat, lon: CITIES[c].lon }); });
+      row.appendChild(b);
+    });
+    box.appendChild(el("p", "or", "Or start from a city centre:"));
+    box.appendChild(row);
+    listEl.appendChild(box);
+  }
+
   // No happy hours within the distance of the place, but some further away: say so, name the nearest,
   // and offer to look further or see every pub and bar there instead.
   function areaEmpty() {
@@ -1411,6 +1436,7 @@
 
   function renderHappyHours() {
     markNowButtons();
+    if (state.place === "near" && !state.me && !state.focus) { listEl.textContent = ""; setCount(null); locationPrompt(); return; }
     var c = city();
     var rows = nowRows();
     var soon = state.when === "now" ? nowRows(true) : [];
@@ -2239,7 +2265,7 @@
     shown = [];
     if (state.crawl) listEl.appendChild(crawlBox());
     var center = allCenter();
-    if (!center) { setCount(null); return; } // the note says it's finding you, or how to allow location
+    if (!center) { setCount(null); locationPrompt(); return; }
     loadOthers(center);
     var rows = allRows(center);
     var k = others.key + "|" + state.query + "|" + state.openNow + "|" + state.savedOnly;
@@ -2400,7 +2426,7 @@
 
   function locate() {
     if (!navigator.geolocation) {
-      noteText = "This browser can't share your location. Pick a city instead.";
+      noteText = "This browser can't share your location. Search a suburb above, or start from a city centre.";
       render();
       return;
     }
@@ -2916,7 +2942,7 @@
     state.tab = "now";
     suggestions = [{ value: sharedBar.name, bar: sharedBar }];
     choose(0);
-  } else if (state.place === "near") locate();
+  } else if (state.place === "near" && !state.focus) locate();
   render();
 
   // ----- Share the app, and "Save as an app" instructions -----
