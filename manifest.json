@@ -1,7 +1,7 @@
 {
   "name": "Happy Hour",
   "short_name": "Happy Hour",
-  "description": "Every pub near you, and the best happy hours in Sydney and Melbourne.",
+  "description": "Every pub near you, plus the best happy hours in Sydney and Melbourne.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
